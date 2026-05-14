@@ -1,0 +1,6 @@
+{
+  "name": "Nexus ERP",
+  "description": "Professional offline-first cross-platform ERP system for multi-company management, inventory, sales, and HR.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["OFFLINE_STORAGE", "MULTI_COMPANY", "POS", "INVENTORY"]
+}
