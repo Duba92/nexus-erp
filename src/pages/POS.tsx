@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { db, type Product, type SaleItem } from '@/src/lib/db';
 import { useAuthStore } from '@/src/store/useAuthStore';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { cn } from '@/lib/utils';
+import { cn } from '@/src/lib/utils';
 import {
   Card,
   CardContent,
@@ -10,10 +10,10 @@ import {
   CardHeader,
   CardTitle,
   CardFooter,
-} from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+} from '@/src/components/ui/card';
+import { Button } from '@/src/components/ui/button';
+import { Input } from '@/src/components/ui/input';
+import { Label } from '@/src/components/ui/label';
 import { 
   Plus, 
   Minus, 
@@ -28,9 +28,9 @@ import {
   Package
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/src/components/ui/badge';
+import { ScrollArea } from '@/src/components/ui/scroll-area';
+import { Separator } from '@/src/components/ui/separator';
 import {
   Dialog,
   DialogContent,
@@ -38,14 +38,17 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
+} from '@/src/components/ui/dialog';
 
 interface CartItem extends Product {
   cartQuantity: number;
 }
 
+import { useTranslation } from '@/src/lib/i18n';
+
 export default function POS() {
   const { currentCompany, currentUser } = useAuthStore();
+  const { t, formatCurrency } = useTranslation();
   const products = useLiveQuery(() => 
     currentCompany ? db.products.where('companyId').equals(currentCompany.id!).toArray() : []
   , [currentCompany]);
@@ -167,7 +170,7 @@ export default function POS() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input 
-              placeholder="Search products or scan barcode..." 
+              placeholder={t('search')} 
               className="pl-10 h-10 shadow-sm"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -195,7 +198,7 @@ export default function POS() {
                   <h3 className="font-bold text-sm truncate" title={product.name}>{product.name}</h3>
                   <p className="text-xs text-muted-foreground mb-2">{product.barcode || 'No SKU'}</p>
                   <div className="flex items-center justify-between">
-                    <span className="text-lg font-bold">${product.sellingPrice.toFixed(2)}</span>
+                    <span className="text-lg font-bold">{formatCurrency(product.sellingPrice)}</span>
                     <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full border">
                       <Plus className="h-4 w-4" />
                     </Button>
@@ -213,9 +216,9 @@ export default function POS() {
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg flex items-center gap-2">
               <ShoppingCart className="h-5 w-5" />
-              Current Cart
+              {t('items_in_cart')}
             </CardTitle>
-            <Badge variant="outline">{cart.length} items</Badge>
+            <Badge variant="outline">{cart.length} {t('products')}</Badge>
           </div>
         </CardHeader>
         
@@ -230,7 +233,7 @@ export default function POS() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-bold text-sm truncate">{item.name}</p>
-                      <p className="text-xs text-muted-foreground">${item.sellingPrice.toFixed(2)} each</p>
+                      <p className="text-xs text-muted-foreground">{formatCurrency(item.sellingPrice)} each</p>
                       <div className="flex items-center gap-2 mt-2">
                         <Button 
                           size="icon" 
@@ -252,7 +255,7 @@ export default function POS() {
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-1">
-                      <span className="text-sm font-bold">${(item.sellingPrice * item.cartQuantity).toFixed(2)}</span>
+                      <span className="text-sm font-bold">{formatCurrency(item.sellingPrice * item.cartQuantity)}</span>
                       <Button 
                         size="icon" 
                         variant="ghost" 
@@ -267,8 +270,7 @@ export default function POS() {
               ) : (
                 <div className="flex flex-col items-center justify-center h-48 text-muted-foreground text-center">
                   <ShoppingCart className="h-12 w-12 mb-4 opacity-10" />
-                  <p>Your cart is empty.</p>
-                  <p className="text-xs">Click on products to add them.</p>
+                  <p>{t('no_recent_activity')}</p>
                 </div>
               )}
             </div>
@@ -278,17 +280,17 @@ export default function POS() {
         <CardFooter className="flex-col gap-3 p-4 border-t bg-muted/20">
           <div className="w-full space-y-1">
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Subtotal</span>
-              <span>${subtotal.toFixed(2)}</span>
+              <span className="text-muted-foreground">{t('subtotal')}</span>
+              <span>{formatCurrency(subtotal)}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Tax (10%)</span>
-              <span>${tax.toFixed(2)}</span>
+              <span className="text-muted-foreground">{t('tax')} (15%)</span>
+              <span>{formatCurrency(tax)}</span>
             </div>
             <Separator className="my-2" />
             <div className="flex justify-between font-bold text-lg">
-              <span>Total</span>
-              <span className="text-primary">${total.toFixed(2)}</span>
+              <span>{t('total')}</span>
+              <span className="text-primary">{formatCurrency(total)}</span>
             </div>
           </div>
           <Button 
@@ -296,7 +298,7 @@ export default function POS() {
             disabled={cart.length === 0}
             onClick={() => setIsCheckoutOpen(true)}
           >
-            Checkout
+            {t('checkout')}
           </Button>
         </CardFooter>
       </Card>
@@ -313,8 +315,8 @@ export default function POS() {
           
           <div className="grid gap-6 py-4">
             <div className="flex flex-col items-center justify-center text-center p-6 bg-muted rounded-xl">
-              <span className="text-sm text-muted-foreground mb-1 uppercase tracking-widest">Amount Due</span>
-              <span className="text-4xl font-black text-primary">${total.toFixed(2)}</span>
+              <span className="text-sm text-muted-foreground mb-1 uppercase tracking-widest">{t('total')}</span>
+              <span className="text-4xl font-black text-primary">{formatCurrency(total)}</span>
             </div>
 
             <div className="grid grid-cols-3 gap-3">

@@ -7,7 +7,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
+} from '@/src/components/ui/card';
 import {
   BarChart,
   Bar,
@@ -29,11 +29,14 @@ import {
   ArrowUpRight,
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
+import { Badge } from '@/src/components/ui/badge';
+import { cn } from '@/src/lib/utils';
+
+import { useTranslation } from '@/src/lib/i18n';
 
 export default function Dashboard() {
   const { currentUser, currentCompany } = useAuthStore();
+  const { t, formatCurrency } = useTranslation();
 
   const salesCount = useLiveQuery(() => 
     currentCompany ? db.sales.where('companyId').equals(currentCompany.id!).count() : db.sales.count()
@@ -76,32 +79,32 @@ export default function Dashboard() {
     <div className="space-y-6">
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold tracking-tight">
-          Welcome back, {currentUser?.fullName}
+          {t('welcome_back')}, {currentUser?.fullName}
         </h1>
         <p className="text-muted-foreground">
-          {currentCompany ? `Managing ${currentCompany.name}` : 'System Overview'}
+          {currentCompany ? `${t('managing')} ${currentCompany.name}` : t('system_overview')}
         </p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('total_revenue')}</CardTitle>
             <CircleDollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${totalRevenue?.toLocaleString() || 0}</div>
+            <div className="text-2xl font-bold">{formatCurrency(totalRevenue || 0)}</div>
             <p className="text-xs text-muted-foreground">
               <span className="text-emerald-500 inline-flex items-center">
                 +20.1% <ArrowUpRight className="ml-1 h-3 w-3" />
               </span>{' '}
-              from last month
+              {t('from_last_month')}
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Sales</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('sales')}</CardTitle>
             <ShoppingCart className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -110,28 +113,28 @@ export default function Dashboard() {
               <span className="text-emerald-500 inline-flex items-center">
                 +12% <ArrowUpRight className="ml-1 h-3 w-3" />
               </span>{' '}
-              from last month
+              {t('from_last_month')}
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Products</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('products')}</CardTitle>
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{productCount || 0}</div>
-            <p className="text-xs text-muted-foreground">Registered in inventory</p>
+            <p className="text-xs text-muted-foreground">{t('stock_status')}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Employees</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('active_employees')}</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{employeeCount || 0}</div>
-            <p className="text-xs text-muted-foreground">Across all departments</p>
+            <p className="text-xs text-muted-foreground">{t('active_employees')}</p>
           </CardContent>
         </Card>
       </div>
@@ -139,8 +142,8 @@ export default function Dashboard() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
         <Card className="col-span-4">
           <CardHeader>
-            <CardTitle>Sales Over Time</CardTitle>
-            <CardDescription>Daily sales performance for the current week.</CardDescription>
+            <CardTitle>{t('sales_over_time')}</CardTitle>
+            <CardDescription>{t('daily_sales_performance')}</CardDescription>
           </CardHeader>
           <CardContent className="pl-2">
             <div className="h-[350px]">
@@ -148,7 +151,7 @@ export default function Dashboard() {
                 <BarChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `$${value}`} />
+                  <YAxis fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value} ETB`} />
                   <Tooltip 
                     contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                   />
@@ -160,8 +163,8 @@ export default function Dashboard() {
         </Card>
         <Card className="col-span-3">
           <CardHeader>
-            <CardTitle>Recent Transactions</CardTitle>
-            <CardDescription>Latest income and expenses.</CardDescription>
+            <CardTitle>{t('recent_transactions')}</CardTitle>
+            <CardDescription>{t('recent_transactions')}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -187,7 +190,7 @@ export default function Dashboard() {
                         "text-sm font-bold",
                         tx.type === 'INCOME' ? "text-emerald-500" : "text-destructive"
                       )}>
-                        {tx.type === 'INCOME' ? '+' : '-'}${tx.amount.toLocaleString()}
+                        {tx.type === 'INCOME' ? '+' : '-'}{formatCurrency(tx.amount)}
                       </p>
                       <Badge variant="outline" className="text-[10px] leading-none uppercase">
                         {tx.referenceType || 'OTHER'}
@@ -197,7 +200,7 @@ export default function Dashboard() {
                 ))
               ) : (
                 <div className="flex h-40 flex-col items-center justify-center text-center text-muted-foreground">
-                  <p>No recent activity</p>
+                  <p>{t('no_recent_activity')}</p>
                 </div>
               )}
             </div>

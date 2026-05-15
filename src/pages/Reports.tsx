@@ -7,7 +7,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
+} from '@/src/components/ui/card';
 import {
   Table,
   TableBody,
@@ -15,15 +15,18 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
+} from '@/src/components/ui/table';
+import { Button } from '@/src/components/ui/button';
 import { FileText, Download, Printer, PieChart, BarChart3, TrendingUp } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { Badge } from '@/src/components/ui/badge';
 import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
+import { cn } from '@/src/lib/utils';
+
+import { useTranslation } from '@/src/lib/i18n';
 
 export default function Reports() {
   const { currentCompany } = useAuthStore();
+  const { t, formatCurrency } = useTranslation();
   
   const sales = useLiveQuery(() => 
     currentCompany ? db.sales.where('companyId').equals(currentCompany.id!).reverse().toArray() : []
@@ -46,8 +49,8 @@ export default function Reports() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Reports & Analytics</h1>
-          <p className="text-muted-foreground">Insights into your business performance.</p>
+          <h1 className="text-3xl font-bold tracking-tight">{t('reports_and_analytics')}</h1>
+          <p className="text-muted-foreground">{t('system_overview')}</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => handleExport('PDF')}>
@@ -65,31 +68,31 @@ export default function Reports() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center justify-between">
-              Total Revenue
+              {t('total_revenue')}
               <TrendingUp className="h-4 w-4 text-emerald-500" />
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${totalIncome.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">Total money coming in</p>
+            <div className="text-2xl font-bold">{formatCurrency(totalIncome)}</div>
+            <p className="text-xs text-muted-foreground">{t('income')}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center justify-between">
-              Total Expenses
+              {t('total_expenses')}
               <TrendingUp className="h-4 w-4 text-destructive rotate-180" />
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-destructive">${totalExpenses.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">Total operational costs</p>
+            <div className="text-2xl font-bold text-destructive">{formatCurrency(totalExpenses)}</div>
+            <p className="text-xs text-muted-foreground">{t('expense')}</p>
           </CardContent>
         </Card>
         <Card className="bg-primary/5 border-primary/20">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center justify-between">
-              Net Profit
+              {t('net_profit')}
               <PieChart className="h-4 w-4 text-primary" />
             </CardTitle>
           </CardHeader>
@@ -98,9 +101,9 @@ export default function Reports() {
               "text-2xl font-bold",
               netProfit >= 0 ? "text-emerald-500" : "text-destructive"
             )}>
-              ${netProfit.toLocaleString()}
+              {formatCurrency(netProfit)}
             </div>
-            <p className="text-xs text-muted-foreground">Bottom line performance</p>
+            <p className="text-xs text-muted-foreground">{t('net_profit')}</p>
           </CardContent>
         </Card>
       </div>
@@ -110,18 +113,18 @@ export default function Reports() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <BarChart3 className="h-5 w-5" />
-              Latest Sales
+              {t('latest_sales')}
             </CardTitle>
-            <CardDescription>Recent invoices generated from POS.</CardDescription>
+            <CardDescription>{t('latest_sales')}</CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Inv #</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Method</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
+                  <TableHead>{t('date')}</TableHead>
+                  <TableHead>{t('method')}</TableHead>
+                  <TableHead className="text-right">{t('total')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -134,13 +137,13 @@ export default function Reports() {
                         <Badge variant="outline" className="text-[10px]">{s.paymentMethod}</Badge>
                       </TableCell>
                       <TableCell className="text-right font-bold text-emerald-600">
-                        ${s.total.toFixed(2)}
+                        {formatCurrency(s.total)}
                       </TableCell>
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={4} className="h-24 text-center">No sales recorded yet</TableCell>
+                    <TableCell colSpan={4} className="h-24 text-center">{t('no_recent_activity')}</TableCell>
                   </TableRow>
                 )}
               </TableBody>
@@ -152,17 +155,17 @@ export default function Reports() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
-              Recent Expenses
+              {t('recent_transactions')}
             </CardTitle>
-            <CardDescription>Operating costs and purchase orders.</CardDescription>
+            <CardDescription>{t('expense')}</CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead>{t('category')}</TableHead>
+                  <TableHead>{t('date')}</TableHead>
+                  <TableHead className="text-right">{t('amount')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -171,13 +174,13 @@ export default function Reports() {
                     <TableCell className="font-medium">{t.category}</TableCell>
                     <TableCell className="text-xs">{format(t.date, 'MMM dd')}</TableCell>
                     <TableCell className="text-right text-destructive font-bold">
-                      -${t.amount.toLocaleString()}
+                      -{formatCurrency(t.amount)}
                     </TableCell>
                   </TableRow>
                 ))}
                 {!transactions?.filter(t => t.type === 'EXPENSE').length && (
                   <TableRow>
-                    <TableCell colSpan={3} className="h-24 text-center">No expenses recorded</TableCell>
+                    <TableCell colSpan={3} className="h-24 text-center">{t('no_recent_activity')}</TableCell>
                   </TableRow>
                 )}
               </TableBody>

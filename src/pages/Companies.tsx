@@ -7,7 +7,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
+} from '@/src/components/ui/card';
 import {
   Table,
   TableBody,
@@ -15,8 +15,8 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
+} from '@/src/components/ui/table';
+import { Button } from '@/src/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -25,13 +25,15 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+} from '@/src/components/ui/dialog';
+import { Input } from '@/src/components/ui/input';
+import { Label } from '@/src/components/ui/label';
 import { Plus, Search, Building2, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation } from '@/src/lib/i18n';
 
 export default function Companies() {
+  const { t } = useTranslation();
   const companies = useLiveQuery(() => db.companies.toArray());
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -84,33 +86,33 @@ export default function Companies() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Companies</h1>
-          <p className="text-muted-foreground">Manage all registered businesses in the system.</p>
+          <h1 className="text-3xl font-bold tracking-tight">{t('companies')}</h1>
+          <p className="text-muted-foreground">{t('system_overview')}</p>
         </div>
         <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <DialogTrigger render={<Button />}>
             <Plus className="mr-2 h-4 w-4" />
-            Add Company
+            {t('add_company')}
           </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
             <form onSubmit={handleCreateCompany}>
               <DialogHeader>
-                <DialogTitle>Add Company</DialogTitle>
+                <DialogTitle>{t('add_company')}</DialogTitle>
                 <DialogDescription>
                   Create a new company workspace. A default admin account will be generated.
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="name">Company Name</Label>
+                  <Label htmlFor="name">{t('name')}</Label>
                   <Input id="name" name="name" required />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="email">Email Address</Label>
+                  <Label htmlFor="email">{t('email')}</Label>
                   <Input id="email" name="email" type="email" required />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="phone">Phone Number</Label>
+                  <Label htmlFor="phone">{t('phone')}</Label>
                   <Input id="phone" name="phone" />
                 </div>
                 <div className="grid gap-2">
@@ -123,7 +125,7 @@ export default function Companies() {
                 </div>
               </div>
               <DialogFooter>
-                <Button type="submit">Create Company</Button>
+                <Button type="submit">{t('add_company')}</Button>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -136,7 +138,7 @@ export default function Companies() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input 
-                placeholder="Search companies..." 
+                placeholder={t('search')} 
                 className="pl-10" 
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -148,11 +150,11 @@ export default function Companies() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Company</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{t('companies')}</TableHead>
+                <TableHead>{t('email')}</TableHead>
+                <TableHead>{t('phone')}</TableHead>
+                <TableHead>{t('status')}</TableHead>
+                <TableHead className="text-right">{t('actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -171,7 +173,7 @@ export default function Companies() {
                     <TableCell>{company.phone || '-'}</TableCell>
                     <TableCell>
                       <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-800">
-                        Active
+                        {t('status')}
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
@@ -192,7 +194,7 @@ export default function Companies() {
               ) : (
                 <TableRow>
                   <TableCell colSpan={5} className="h-24 text-center">
-                    No companies found.
+                    {t('no_recent_activity')}
                   </TableCell>
                 </TableRow>
               )}

@@ -2,14 +2,14 @@ import React, { useState } from 'react';
 import { db, type User, type Department } from '@/src/lib/db';
 import { useAuthStore } from '@/src/store/useAuthStore';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { cn } from '@/lib/utils';
+import { cn } from '@/src/lib/utils';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
+} from '@/src/components/ui/card';
 import {
   Table,
   TableBody,
@@ -17,8 +17,8 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
+} from '@/src/components/ui/table';
+import { Button } from '@/src/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -27,24 +27,27 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+} from '@/src/components/ui/dialog';
+import { Input } from '@/src/components/ui/input';
+import { Label } from '@/src/components/ui/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from '@/src/components/ui/select';
 import { Plus, Search, Users, Pencil, Trash2, Calendar, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
-import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/src/components/ui/badge';
+import { Avatar, AvatarFallback } from '@/src/components/ui/avatar';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/src/components/ui/tabs';
+
+import { useTranslation } from '@/src/lib/i18n';
 
 export default function Employees() {
   const { currentCompany } = useAuthStore();
+  const { t, formatCurrency } = useTranslation();
   const employees = useLiveQuery(() => 
     currentCompany ? db.users.where('companyId').equals(currentCompany.id!).toArray() : []
   , [currentCompany]);
@@ -98,37 +101,37 @@ export default function Employees() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">HR Management</h1>
-          <p className="text-muted-foreground">Manage your team, departments, and payroll.</p>
+          <h1 className="text-3xl font-bold tracking-tight">{t('employees')}</h1>
+          <p className="text-muted-foreground">{t('system_overview')}</p>
         </div>
         <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
           <DialogTrigger render={<Button />}>
             <Plus className="mr-2 h-4 w-4" />
-            Register Employee
+            {t('register_employee')}
           </DialogTrigger>
           <DialogContent className="sm:max-w-[525px]">
             <form onSubmit={handleAddEmployee}>
               <DialogHeader>
-                <DialogTitle>Register New Employee</DialogTitle>
+                <DialogTitle>{t('register_employee')}</DialogTitle>
                 <DialogDescription>
                   Enter personal and professional details for the new staff member.
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4 sm:grid-cols-2">
                 <div className="grid gap-2 sm:col-span-2">
-                  <Label htmlFor="fullName">Full Name</Label>
+                  <Label htmlFor="fullName">{t('name')}</Label>
                   <Input id="fullName" name="fullName" required />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="email">Work Email</Label>
+                  <Label htmlFor="email">{t('email')}</Label>
                   <Input id="email" name="email" type="email" required />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="phone">Phone Number</Label>
+                  <Label htmlFor="phone">{t('phone')}</Label>
                   <Input id="phone" name="phone" />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="role">Role</Label>
+                  <Label htmlFor="role">{t('role')}</Label>
                   <Select name="role" defaultValue="EMPLOYEE">
                     <SelectTrigger>
                       <SelectValue placeholder="Select role" />
@@ -155,12 +158,12 @@ export default function Employees() {
                   </Select>
                 </div>
                 <div className="grid gap-2 sm:col-span-2">
-                  <Label htmlFor="salary">Base Salary ($)</Label>
+                  <Label htmlFor="salary">Base Salary (ETB)</Label>
                   <Input id="salary" name="salary" type="number" defaultValue="0" />
                 </div>
               </div>
               <DialogFooter>
-                <Button type="submit">Register Employee</Button>
+                <Button type="submit">{t('register_employee')}</Button>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -193,12 +196,12 @@ export default function Employees() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Employee</TableHead>
-                    <TableHead>Role</TableHead>
+                    <TableHead>{t('employees')}</TableHead>
+                    <TableHead>{t('role')}</TableHead>
                     <TableHead>Department</TableHead>
-                    <TableHead>Salary</TableHead>
-                    <TableHead>Join Date</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>{t('subtotal')}</TableHead>
+                    <TableHead>{t('date')}</TableHead>
+                    <TableHead className="text-right">{t('actions')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -224,7 +227,7 @@ export default function Employees() {
                         <TableCell>
                           {departments?.find(d => d.id === e.departmentId)?.name || 'General'}
                         </TableCell>
-                        <TableCell>${e.salary?.toLocaleString() || '0'}</TableCell>
+                        <TableCell>{formatCurrency(e.salary || 0)}</TableCell>
                         <TableCell className="text-xs text-muted-foreground">
                           {e.createdAt ? new Intl.DateTimeFormat('en-US').format(e.createdAt) : '-'}
                         </TableCell>

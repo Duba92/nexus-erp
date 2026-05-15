@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/src/store/useAuthStore';
+import { useLanguageStore, type Language } from '@/src/store/useLanguageStore';
+import { useTranslation } from '@/src/lib/i18n';
+import { TranslationKey } from '@/src/lib/translations';
 import {
   LayoutDashboard,
   Building2,
@@ -14,36 +17,62 @@ import {
   User,
   ChevronRight,
   Menu,
+  Languages,
+  Download,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
+import { cn } from '@/src/lib/utils';
+import { Button } from '@/src/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { ScrollArea } from '@/components/ui/scroll-area';
+} from '@/src/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback, AvatarImage } from '@/src/components/ui/avatar';
+import { Sheet, SheetContent, SheetTrigger } from '@/src/components/ui/sheet';
+import { ScrollArea } from '@/src/components/ui/scroll-area';
+import { useEffect } from 'react';
 
-const navItems = [
-  { name: 'Dashboard', path: '/', icon: LayoutDashboard },
-  { name: 'Companies', path: '/companies', icon: Building2, roles: ['SUPER_ADMIN'] },
-  { name: 'POS', path: '/pos', icon: ShoppingCart },
-  { name: 'Inventory', path: '/inventory', icon: Package },
-  { name: 'Employees', path: '/employees', icon: Users },
-  { name: 'Reports', path: '/reports', icon: FileText },
-  { name: 'Settings', path: '/settings', icon: Settings },
+const navItems: { nameKey: TranslationKey; path: string; icon: any; roles?: string[] }[] = [
+  { nameKey: 'dashboard', path: '/', icon: LayoutDashboard },
+  { nameKey: 'companies', path: '/companies', icon: Building2, roles: ['SUPER_ADMIN'] },
+  { nameKey: 'pos', path: '/pos', icon: ShoppingCart },
+  { nameKey: 'inventory', path: '/inventory', icon: Package },
+  { nameKey: 'employees', path: '/employees', icon: Users },
+  { nameKey: 'reports', path: '/reports', icon: FileText },
+  { nameKey: 'settings', path: '/settings', icon: Settings },
 ];
 
 export default function DashboardLayout() {
   const { currentUser, currentCompany, logout } = useAuthStore();
+  const { language, setLanguage } = useLanguageStore();
+  const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
+  useEffect(() => {
+    const handler = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstall = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setDeferredPrompt(null);
+      }
+    }
+  };
 
   const filteredNavItems = navItems.filter(item => 
     !item.roles || (currentUser && item.roles.includes(currentUser.role))
@@ -76,7 +105,7 @@ export default function DashboardLayout() {
                 )}
               >
                 <item.icon className="h-4 w-4" />
-                {item.name}
+                {t(item.nameKey)}
               </Link>
             ))}
           </nav>
@@ -119,7 +148,7 @@ export default function DashboardLayout() {
                       )}
                     >
                       <item.icon className="h-4 w-4" />
-                      {item.name}
+                      {t(item.nameKey)}
                     </Link>
                   ))}
                 </nav>
@@ -134,27 +163,52 @@ export default function DashboardLayout() {
                 </>
               ) : currentUser?.role === 'SUPER_ADMIN' ? (
                 <>
-                  <span className="text-foreground">System Administration</span>
+                  <span className="text-foreground">{t('system_overview')}</span>
                   <ChevronRight className="h-4 w-4" />
                 </>
               ) : null}
-              <span>{navItems.find(i => i.path === location.pathname)?.name || 'Page'}</span>
+              <span>{t(navItems.find(i => i.path === location.pathname)?.nameKey || 'dashboard' as any)}</span>
             </div>
           </div>
 
           <div className="flex items-center gap-4">
+            {deferredPrompt && (
+              <Button variant="outline" size="sm" onClick={handleInstall} className="hidden md:flex gap-2 bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100">
+                <Download className="h-4 w-4" />
+                Install
+              </Button>
+            )}
+            <DropdownMenu>
+              <DropdownMenuTrigger render={<Button variant="ghost" size="icon" />}>
+                <Languages className="h-5 w-5" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Change Language</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setLanguage('en')} className={cn(language === 'en' && "bg-muted font-bold")}>
+                  English
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setLanguage('om')} className={cn(language === 'om' && "bg-muted font-bold")}>
+                  Afaan Oromoo
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setLanguage('am')} className={cn(language === 'am' && "bg-muted font-bold")}>
+                  አማርኛ (Amharic)
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             <Button variant="ghost" size="icon" className="relative">
               <Bell className="h-5 w-5" />
               <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-destructive" />
             </Button>
             
             <DropdownMenu>
-              <DropdownMenuTrigger render={<Button variant="ghost" className="relative h-9 w-9 rounded-full" />}>
+              <DropdownMenuTrigger render={<Button variant="ghost" className="relative h-9 w-9 rounded-full p-0" />}>
                 <Avatar className="h-9 w-9">
                   <AvatarFallback>{currentUser?.fullName.charAt(0)}</AvatarFallback>
                 </Avatar>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" align="end" forceMount>
+              <DropdownMenuContent className="w-56" align="end">
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-medium leading-none">{currentUser?.fullName}</p>
@@ -168,12 +222,12 @@ export default function DashboardLayout() {
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate('/settings')}>
                   <Settings className="mr-2 h-4 w-4" />
-                  <span>Settings</span>
+                  <span>{t('settings')}</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
                   <LogOut className="mr-2 h-4 w-4" />
-                  <span>Log out</span>
+                  <span>{t('logout')}</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

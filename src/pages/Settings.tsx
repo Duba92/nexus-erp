@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { db } from '@/src/lib/db';
 import { useAuthStore } from '@/src/store/useAuthStore';
-import { cn } from '@/lib/utils';
+import { cn } from '@/src/lib/utils';
 import {
   Card,
   CardContent,
@@ -9,10 +9,10 @@ import {
   CardHeader,
   CardTitle,
   CardFooter,
-} from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+} from '@/src/components/ui/card';
+import { Button } from '@/src/components/ui/button';
+import { Input } from '@/src/components/ui/input';
+import { Label } from '@/src/components/ui/label';
 import {
   Settings as SettingsIcon,
   Shield,
@@ -25,11 +25,14 @@ import {
   User as UserIcon,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Separator } from '@/components/ui/separator';
+import { Separator } from '@/src/components/ui/separator';
 import { format as formatDateFns } from 'date-fns';
+
+import { useTranslation } from '@/src/lib/i18n';
 
 export default function Settings() {
   const { currentCompany, currentUser } = useAuthStore();
+  const { t } = useTranslation();
   const [isBackingUp, setIsBackingUp] = useState(false);
 
   const handleSaveCompany = (e: React.FormEvent) => {
@@ -70,27 +73,19 @@ export default function Settings() {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-        <p className="text-muted-foreground">Manage your account and workspace preferences.</p>
+        <h1 className="text-3xl font-bold tracking-tight">{t('settings')}</h1>
+        <p className="text-muted-foreground">{t('system_overview')}</p>
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
         <aside className="space-y-1">
           <Button variant="ghost" className="w-full justify-start gap-2 bg-muted">
             <User className="h-4 w-4" />
-            Account Profile
+            {t('profile')}
           </Button>
           <Button variant="ghost" className="w-full justify-start gap-2">
-            <Shield className="h-4 w-4" />
-            Security & Privacy
-          </Button>
-          <Button variant="ghost" className="w-full justify-start gap-2">
-            <Palette className="h-4 w-4" />
-            Appearance
-          </Button>
-          <Button variant="ghost" className="w-full justify-start gap-2">
-            <Database className="h-4 w-4" />
-            Backup & Restore
+            <SettingsIcon className="h-4 w-4" />
+            {t('settings')}
           </Button>
         </aside>
 

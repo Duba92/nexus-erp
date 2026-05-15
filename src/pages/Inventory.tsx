@@ -2,14 +2,14 @@ import React, { useState } from 'react';
 import { db, type Product } from '@/src/lib/db';
 import { useAuthStore } from '@/src/store/useAuthStore';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { cn } from '@/lib/utils';
+import { cn } from '@/src/lib/utils';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
+} from '@/src/components/ui/card';
 import {
   Table,
   TableBody,
@@ -17,8 +17,8 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
+} from '@/src/components/ui/table';
+import { Button } from '@/src/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -27,22 +27,25 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+} from '@/src/components/ui/dialog';
+import { Input } from '@/src/components/ui/input';
+import { Label } from '@/src/components/ui/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from '@/src/components/ui/select';
 import { Plus, Search, Package, Pencil, Trash2, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
-import { Badge } from '@/components/ui/badge';
+import { Badge } from '@/src/components/ui/badge';
+
+import { useTranslation } from '@/src/lib/i18n';
 
 export default function Inventory() {
   const { currentCompany } = useAuthStore();
+  const { t, formatCurrency } = useTranslation();
   const products = useLiveQuery(() => 
     currentCompany ? db.products.where('companyId').equals(currentCompany.id!).toArray() : []
   , [currentCompany]);
@@ -92,25 +95,25 @@ export default function Inventory() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Inventory</h1>
-          <p className="text-muted-foreground">Monitor and manage your stock levels.</p>
+          <h1 className="text-3xl font-bold tracking-tight">{t('inventory')}</h1>
+          <p className="text-muted-foreground">{t('stock_status')}</p>
         </div>
         <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
           <DialogTrigger render={<Button />}>
             <Plus className="mr-2 h-4 w-4" />
-            Add Product
+            {t('add_product')}
           </DialogTrigger>
           <DialogContent className="sm:max-w-[525px]">
             <form onSubmit={handleAddProduct}>
               <DialogHeader>
-                <DialogTitle>Add New Product</DialogTitle>
+                <DialogTitle>{t('add_product')}</DialogTitle>
                 <DialogDescription>
                   Enter product details to add it to your inventory.
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4 sm:grid-cols-2">
                 <div className="grid gap-2 sm:col-span-2">
-                  <Label htmlFor="name">Product Name</Label>
+                  <Label htmlFor="name">{t('name')}</Label>
                   <Input id="name" name="name" required />
                 </div>
                 <div className="grid gap-2">
@@ -130,16 +133,16 @@ export default function Inventory() {
                   <Input id="lowStockThreshold" name="lowStockThreshold" type="number" defaultValue="5" required />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="costPrice">Cost Price ($)</Label>
+                  <Label htmlFor="costPrice">Cost Price (ETB)</Label>
                   <Input id="costPrice" name="costPrice" type="number" step="0.01" required />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="sellingPrice">Selling Price ($)</Label>
+                  <Label htmlFor="sellingPrice">Selling Price (ETB)</Label>
                   <Input id="sellingPrice" name="sellingPrice" type="number" step="0.01" required />
                 </div>
               </div>
               <DialogFooter>
-                <Button type="submit">Add Product</Button>
+                <Button type="submit">{t('add_product')}</Button>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -183,7 +186,7 @@ export default function Inventory() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input 
-                placeholder="Search by name or barcode..." 
+                placeholder={t('search')} 
                 className="pl-10" 
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -195,13 +198,13 @@ export default function Inventory() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Product</TableHead>
+                <TableHead>{t('products')}</TableHead>
                 <TableHead>Barcode</TableHead>
                 <TableHead>Stock</TableHead>
                 <TableHead>Cost</TableHead>
-                <TableHead>Price</TableHead>
+                <TableHead>{t('price')}</TableHead>
                 <TableHead>Margin</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="text-right">{t('actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -232,8 +235,8 @@ export default function Inventory() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell>${p.costPrice.toFixed(2)}</TableCell>
-                      <TableCell>${p.sellingPrice.toFixed(2)}</TableCell>
+                      <TableCell>{formatCurrency(p.costPrice)}</TableCell>
+                      <TableCell>{formatCurrency(p.sellingPrice)}</TableCell>
                       <TableCell>
                         <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-600 border-none">
                           {margin}%
@@ -258,7 +261,7 @@ export default function Inventory() {
               ) : (
                 <TableRow>
                   <TableCell colSpan={7} className="h-24 text-center">
-                    No products found.
+                    {t('no_recent_activity')}
                   </TableCell>
                 </TableRow>
               )}

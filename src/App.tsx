@@ -17,6 +17,7 @@ import Reports from './pages/Reports';
 import Settings from './pages/Settings';
 import DashboardLayout from './components/layout/DashboardLayout';
 import { db } from './lib/db';
+import { PWAUpdater } from './components/PWAUpdater';
 
 function ProtectedRoute({ children, roles }: { children: React.ReactNode; roles?: string[] }) {
   const { isAuthenticated, currentUser } = useAuthStore();
@@ -54,6 +55,7 @@ export default function App() {
 
   return (
     <Router>
+      <PWAUpdater />
       <Routes>
         <Route path="/login" element={!isAuthenticated ? <Login /> : <Navigate to="/" replace />} />
         
