@@ -33,11 +33,21 @@ import { toast } from 'sonner';
 import { useTranslation } from '@/src/lib/i18n';
 import { Separator } from '@/src/components/ui/separator';
 
-export default function Companies() {
+ export default function Companies() {
   const { t } = useTranslation();
+  const { currentUser } = useAuthStore();
   const companies = useLiveQuery(() => db.companies.toArray());
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [search, setSearch] = useState('');
+
+  if (currentUser?.role !== 'SUPER_ADMIN') {
+    return (
+      <div className="flex h-[50vh] flex-col items-center justify-center gap-4">
+        <Building2 className="h-12 w-12 text-muted-foreground/20" />
+        <p className="text-muted-foreground font-medium">Access Denied. This module is restricted to Super Admins.</p>
+      </div>
+    );
+  }
 
   const filteredCompanies = companies?.filter(c => 
     c.name.toLowerCase().includes(search.toLowerCase()) || 

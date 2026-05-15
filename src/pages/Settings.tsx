@@ -101,7 +101,7 @@ export default function Settings() {
       const attendance = await db.attendance.toArray();
       
       const backupData = {
-        type: 'NEXUS_EXPORT',
+        type: 'HULLEE_EXPORT',
         version: '1.0',
         exportedAt: new Date().toISOString(),
         data: {
@@ -115,7 +115,7 @@ export default function Settings() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `nexus_erp_full_backup_${new Date().toISOString().split('T')[0]}.json`;
+      a.download = `hullee_pos_full_backup_${new Date().toISOString().split('T')[0]}.json`;
       a.click();
       
       toast.success('Full database backup generated');
@@ -140,7 +140,7 @@ export default function Settings() {
     reader.onload = async (event) => {
       try {
         const backup = JSON.parse(event.target?.result as string);
-        if (backup.type === 'NEXUS_EXPORT' && backup.data) {
+        if (backup.type === 'HULLEE_EXPORT' && backup.data) {
           const { 
             companies, users, products, categories, suppliers, 
             departments, sales, saleItems, purchases, 
@@ -190,83 +190,15 @@ export default function Settings() {
     <div className="max-w-4xl mx-auto space-y-6">
       <div className="flex flex-col gap-1">
         <h1 className="text-3xl font-bold tracking-tight text-primary">Settings</h1>
-        <p className="text-muted-foreground">Manage your personal profile and business configurations.</p>
+        <p className="text-muted-foreground">Manage your business configurations and system data.</p>
       </div>
 
-      <Tabs defaultValue="profile" className="space-y-6">
+      <Tabs defaultValue={isAdmin ? "company" : "appearance"} className="space-y-6">
         <TabsList className="bg-muted/50 p-1">
-          <TabsTrigger value="profile">Account</TabsTrigger>
-          {isAdmin && <TabsTrigger value="company">Company</TabsTrigger>}
+          {isAdmin && <TabsTrigger value="company">Business Profile</TabsTrigger>}
           {isAdmin && <TabsTrigger value="data">Data Management</TabsTrigger>}
+          <TabsTrigger value="appearance">Appearance</TabsTrigger>
         </TabsList>
-
-        <TabsContent value="profile" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>User Profile</CardTitle>
-              <CardDescription>Your personal information and system role.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center gap-4 p-4 rounded-xl bg-muted/30">
-                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xl">
-                  {currentUser?.fullName.charAt(0)}
-                </div>
-                <div>
-                  <h3 className="font-bold">{currentUser?.fullName}</h3>
-                  <p className="text-sm text-muted-foreground">{currentUser?.email}</p>
-                  <Badge variant="outline" className="mt-1 uppercase text-[10px]">{currentUser?.role}</Badge>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Security</CardTitle>
-              <CardDescription>Update your password to keep your account secure.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleChangePassword} className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="grid gap-2 sm:col-span-2">
-                    <Label htmlFor="currentPassword">Current Password</Label>
-                    <Input 
-                      id="currentPassword" 
-                      type="password" 
-                      value={passwordData.current}
-                      onChange={(e) => setPasswordData({ ...passwordData, current: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="newPassword">New Password</Label>
-                    <Input 
-                      id="newPassword" 
-                      type="password" 
-                      value={passwordData.new}
-                      onChange={(e) => setPasswordData({ ...passwordData, new: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="confirmPassword">Confirm Password</Label>
-                    <Input 
-                      id="confirmPassword" 
-                      type="password" 
-                      value={passwordData.confirm}
-                      onChange={(e) => setPasswordData({ ...passwordData, confirm: e.target.value })}
-                      required
-                    />
-                  </div>
-                </div>
-                <Button type="submit" className="gap-2">
-                  <Shield className="h-4 w-4" />
-                  Save New Password
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-        </TabsContent>
 
         {isAdmin && (
           <TabsContent value="company" className="space-y-6">
@@ -317,7 +249,7 @@ export default function Settings() {
                   <Database className="h-5 w-5" />
                   Backup & Recovery
                 </CardTitle>
-                <CardDescription>Nexus ERP stores data locally. Frequent backups are recommended.</CardDescription>
+                <CardDescription>Hullee stores data locally. Frequent backups are recommended.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -331,7 +263,7 @@ export default function Settings() {
                   </div>
                   <div className="p-4 border bg-white rounded-lg">
                     <h4 className="font-bold text-sm mb-2">Import Data</h4>
-                    <p className="text-xs text-muted-foreground mb-4">Restore data from a previously exported Nexus file.</p>
+                    <p className="text-xs text-muted-foreground mb-4">Restore data from a previously exported Hullee file.</p>
                     <Input 
                       type="file" 
                       id="restore-upload" 
@@ -375,6 +307,34 @@ export default function Settings() {
             </Card>
           </TabsContent>
         )}
+
+        <TabsContent value="appearance" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Appearance Settings</CardTitle>
+              <CardDescription>Customize the look and feel of your application.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 py-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">Dark Mode</p>
+                    <p className="text-xs text-muted-foreground">Switch between light and dark themes.</p>
+                  </div>
+                  <Button variant="outline" size="sm" disabled>Coming Soon</Button>
+                </div>
+                <Separator />
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">Compact Table View</p>
+                    <p className="text-xs text-muted-foreground">Show more rows in data tables.</p>
+                  </div>
+                  <Button variant="outline" size="sm" disabled>Coming Soon</Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
     </div>
   );

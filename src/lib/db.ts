@@ -125,7 +125,7 @@ export interface Attendance {
   status: 'PRESENT' | 'ABSENT' | 'LATE' | 'LEAVE';
 }
 
-export class NexusDatabase extends Dexie {
+export class HulleeDatabase extends Dexie {
   companies!: Table<Company>;
   users!: Table<User>;
   departments!: Table<Department>;
@@ -140,7 +140,7 @@ export class NexusDatabase extends Dexie {
   attendance!: Table<Attendance>;
 
   constructor() {
-    super('NexusERP_DB');
+    super('HulleePOS_DB');
     this.version(1).stores({
       companies: '++id, name, email',
       users: '++id, companyId, email, role',
@@ -158,7 +158,7 @@ export class NexusDatabase extends Dexie {
   }
 }
 
-export const db = new NexusDatabase();
+export const db = new HulleeDatabase();
 
 // Bootstrap initial Super Admin if needed
 async function bootstrap() {
@@ -166,12 +166,12 @@ async function bootstrap() {
   if (!superAdmin) {
     await db.users.add({
       fullName: 'Super Admin',
-      email: 'admin@nexus.erp',
+      email: 'admin@hullee.com',
       passwordHash: 'admin123',
       role: 'SUPER_ADMIN',
       createdAt: new Date(),
     });
-    console.log('Super Admin account bootstrapped: admin@nexus.erp / admin123');
+    console.log('Super Admin account bootstrapped: admin@hullee.com / admin123');
   }
 }
 

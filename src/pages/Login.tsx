@@ -57,8 +57,8 @@ export default function Login() {
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
             <Building2 className="h-8 w-8" />
           </div>
-          <h1 className="text-3xl font-bold tracking-tight">Nexus ERP</h1>
-          <p className="text-muted-foreground">Professional Offline ERP Solutions</p>
+          <h1 className="text-3xl font-bold tracking-tight">Hullee POS & HRM</h1>
+          <p className="text-muted-foreground">Professional Efficient POS Solutions</p>
         </div>
 
         <Card className="border-none shadow-xl">
@@ -106,14 +106,14 @@ export default function Login() {
                 {isLoading ? 'Signing in...' : 'Sign in'}
               </Button>
               <div className="text-center text-sm text-muted-foreground">
-                <p>Default Admin: admin@nexus.erp / admin123</p>
+                <p>Default Admin: admin@hullee.com / admin123</p>
               </div>
             </CardFooter>
           </form>
         </Card>
 
         <div className="mt-8 text-center text-xs text-muted-foreground">
-          &copy; 2026 Nexus ERP. All data is stored locally on this device.
+          &copy; 2026 Hullee. All data is stored locally on this device.
         </div>
       </motion.div>
     </div>

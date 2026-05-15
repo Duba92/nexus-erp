@@ -290,18 +290,19 @@ export default function POS() {
           </ScrollArea>
         </CardContent>
 
-        <CardFooter className="flex-col gap-3 p-4 border-t bg-muted/20">
+        <CardFooter className="flex-col gap-3 p-4 border-t bg-primary/5">
           <div className="w-full space-y-1">
-            <div className="flex justify-between font-bold text-lg">
-              <span>{t('total')}</span>
-              <span className="text-primary">{formatCurrency(total)}</span>
+            <div className="flex justify-between font-bold text-xl">
+              <span className="text-muted-foreground uppercase text-xs self-center">Total Amount</span>
+              <span className="text-primary font-black">{formatCurrency(total)}</span>
             </div>
           </div>
           <Button 
-            className="w-full h-12 text-lg font-bold" 
+            className="w-full h-14 text-xl font-black shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] active:scale-[0.98]" 
             disabled={cart.length === 0}
             onClick={() => setIsCheckoutOpen(true)}
           >
+            <CreditCard className="mr-2 h-6 w-6" />
             {t('checkout')}
           </Button>
         </CardFooter>

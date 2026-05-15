@@ -15,6 +15,7 @@ import POS from './pages/POS';
 import Employees from './pages/Employees';
 import Reports from './pages/Reports';
 import Expenses from './pages/Expenses';
+import Profile from './pages/Profile';
 import Settings from './pages/Settings';
 import DashboardLayout from './components/layout/DashboardLayout';
 import { db } from './lib/db';
@@ -87,6 +88,7 @@ export default function App() {
           <Route path="/employees" element={<ProtectedRoute permission="hr"><Employees /></ProtectedRoute>} />
           <Route path="/expenses" element={<ProtectedRoute><Expenses /></ProtectedRoute>} />
           <Route path="/reports" element={<ProtectedRoute permission="sales"><Reports /></ProtectedRoute>} />
+          <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/settings" element={<Settings />} />
         </Route>
 
