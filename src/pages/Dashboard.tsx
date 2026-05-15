@@ -64,16 +64,33 @@ export default function Dashboard() {
       : db.transactions.reverse().limit(5).toArray()
   );
 
-  // Mock data for charts
-  const chartData = [
-    { name: 'Mon', sales: 400, revenue: 2400 },
-    { name: 'Tue', sales: 300, revenue: 1398 },
-    { name: 'Wed', sales: 200, revenue: 9800 },
-    { name: 'Thu', sales: 278, revenue: 3908 },
-    { name: 'Fri', sales: 189, revenue: 4800 },
-    { name: 'Sat', sales: 239, revenue: 3800 },
-    { name: 'Sun', sales: 349, revenue: 4300 },
-  ];
+  const chartData = useLiveQuery(async () => {
+    if (!currentCompany) return [];
+    
+    // Get last 7 days of income
+    const now = new Date();
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const data = [];
+    
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(now.getDate() - i);
+      d.setHours(0, 0, 0, 0);
+      const nextD = new Date(d);
+      nextD.setDate(d.getDate() + 1);
+      
+      const dayTransactions = await db.transactions
+        .where('companyId').equals(currentCompany.id!)
+        .and(t => t.date >= d && t.date < nextD && t.type === 'INCOME')
+        .toArray();
+        
+      data.push({
+        name: days[d.getDay()],
+        revenue: dayTransactions.reduce((acc, t) => acc + t.amount, 0),
+      });
+    }
+    return data;
+  }, [currentCompany]);
 
   return (
     <div className="space-y-6">

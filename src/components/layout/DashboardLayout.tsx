@@ -42,6 +42,7 @@ const navItems: { nameKey: TranslationKey; path: string; icon: any; roles?: stri
   { nameKey: 'pos', path: '/pos', icon: ShoppingCart },
   { nameKey: 'inventory', path: '/inventory', icon: Package },
   { nameKey: 'employees', path: '/employees', icon: Users },
+  { nameKey: 'expenses', path: '/expenses', icon: FileText },
   { nameKey: 'reports', path: '/reports', icon: FileText },
   { nameKey: 'settings', path: '/settings', icon: Settings },
 ];

@@ -100,13 +100,18 @@ export default function POS() {
     }).filter(item => item.cartQuantity > 0));
   };
 
+  const updatePrice = (id: number, price: number) => {
+    setCart(prev => prev.map(item => 
+      item.id === id ? { ...item, sellingPrice: price } : item
+    ));
+  };
+
   const removeFromCart = (id: number) => {
     setCart(prev => prev.filter(item => item.id !== id));
   };
 
   const subtotal = cart.reduce((acc, item) => acc + (item.sellingPrice * item.cartQuantity), 0);
-  const tax = subtotal * 0.1; // 10% tax mock
-  const total = subtotal + tax;
+  const total = subtotal; // Remove tax as per request
 
   const handleCheckout = async () => {
     if (!currentCompany || !currentUser) return;
@@ -119,7 +124,7 @@ export default function POS() {
           userId: currentUser.id!,
           date: new Date(),
           total,
-          tax,
+          tax: 0,
           discount: 0,
           paymentMethod,
           createdAt: new Date(),
@@ -233,7 +238,15 @@ export default function POS() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-bold text-sm truncate">{item.name}</p>
-                      <p className="text-xs text-muted-foreground">{formatCurrency(item.sellingPrice)} each</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Label className="text-[10px] uppercase text-muted-foreground">Price:</Label>
+                        <Input 
+                          type="number" 
+                          className="h-6 w-20 text-xs px-1" 
+                          value={item.sellingPrice}
+                          onChange={(e) => updatePrice(item.id!, parseFloat(e.target.value) || 0)}
+                        />
+                      </div>
                       <div className="flex items-center gap-2 mt-2">
                         <Button 
                           size="icon" 
@@ -279,15 +292,6 @@ export default function POS() {
 
         <CardFooter className="flex-col gap-3 p-4 border-t bg-muted/20">
           <div className="w-full space-y-1">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">{t('subtotal')}</span>
-              <span>{formatCurrency(subtotal)}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">{t('tax')} (15%)</span>
-              <span>{formatCurrency(tax)}</span>
-            </div>
-            <Separator className="my-2" />
             <div className="flex justify-between font-bold text-lg">
               <span>{t('total')}</span>
               <span className="text-primary">{formatCurrency(total)}</span>

@@ -14,6 +14,7 @@ import Inventory from './pages/Inventory';
 import POS from './pages/POS';
 import Employees from './pages/Employees';
 import Reports from './pages/Reports';
+import Expenses from './pages/Expenses';
 import Settings from './pages/Settings';
 import DashboardLayout from './components/layout/DashboardLayout';
 import { db } from './lib/db';
@@ -84,6 +85,7 @@ export default function App() {
           <Route path="/inventory" element={<ProtectedRoute permission="inventory"><Inventory /></ProtectedRoute>} />
           <Route path="/pos" element={<ProtectedRoute permission="pos"><POS /></ProtectedRoute>} />
           <Route path="/employees" element={<ProtectedRoute permission="hr"><Employees /></ProtectedRoute>} />
+          <Route path="/expenses" element={<ProtectedRoute><Expenses /></ProtectedRoute>} />
           <Route path="/reports" element={<ProtectedRoute permission="sales"><Reports /></ProtectedRoute>} />
           <Route path="/settings" element={<Settings />} />
         </Route>

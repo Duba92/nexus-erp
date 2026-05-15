@@ -32,13 +32,40 @@ export default function Reports() {
     currentCompany ? db.sales.where('companyId').equals(currentCompany.id!).reverse().toArray() : []
   , [currentCompany]);
 
+  const saleItems = useLiveQuery(() => 
+    currentCompany ? db.saleItems.toArray() : [] // We'll filter in JS if needed or fix schema
+  , [currentCompany]);
+
+  const products = useLiveQuery(() => 
+    currentCompany ? db.products.where('companyId').equals(currentCompany.id!).toArray() : []
+  , [currentCompany]);
+
   const transactions = useLiveQuery(() => 
     currentCompany ? db.transactions.where('companyId').equals(currentCompany.id!).reverse().toArray() : []
   , [currentCompany]);
 
-  const totalSales = sales?.reduce((acc, s) => acc + s.total, 0) || 0;
   const totalIncome = transactions?.filter(t => t.type === 'INCOME').reduce((acc, t) => acc + t.amount, 0) || 0;
   const totalExpenses = transactions?.filter(t => t.type === 'EXPENSE').reduce((acc, t) => acc + t.amount, 0) || 0;
+  
+  // Real Profit = Total Sales Price - Total Cost of items sold
+  // We need to match sale items with products to get cost
+  const realProfit = useLiveQuery(async () => {
+    if (!currentCompany) return 0;
+    const comps = await db.sales.where('companyId').equals(currentCompany.id!).toArray();
+    const saleIds = comps.map(s => s.id!);
+    const items = await db.saleItems.where('saleId').anyOf(saleIds).toArray();
+    const prods = await db.products.where('companyId').equals(currentCompany.id!).toArray();
+    const prodMap = new Map(prods.map(p => [p.id, p]));
+    
+    return items.reduce((acc, item) => {
+      const prod = prodMap.get(item.productId);
+      if (prod) {
+        return acc + (item.totalPrice - (prod.costPrice * item.quantity));
+      }
+      return acc;
+    }, 0);
+  }, [currentCompany]);
+
   const netProfit = totalIncome - totalExpenses;
 
   const handleExport = (type: string) => {
@@ -64,7 +91,7 @@ export default function Reports() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center justify-between">
@@ -75,6 +102,18 @@ export default function Reports() {
           <CardContent>
             <div className="text-2xl font-bold">{formatCurrency(totalIncome)}</div>
             <p className="text-xs text-muted-foreground">{t('income')}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center justify-between">
+              Real Profit
+              <TrendingUp className="h-4 w-4 text-emerald-500" />
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-emerald-600">{formatCurrency(realProfit || 0)}</div>
+            <p className="text-xs text-muted-foreground">Revenue - Item Cost</p>
           </CardContent>
         </Card>
         <Card>
@@ -92,7 +131,7 @@ export default function Reports() {
         <Card className="bg-primary/5 border-primary/20">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center justify-between">
-              {t('net_profit')}
+              Net Balance
               <PieChart className="h-4 w-4 text-primary" />
             </CardTitle>
           </CardHeader>
@@ -103,7 +142,7 @@ export default function Reports() {
             )}>
               {formatCurrency(netProfit)}
             </div>
-            <p className="text-xs text-muted-foreground">{t('net_profit')}</p>
+            <p className="text-xs text-muted-foreground">Income - Expenses</p>
           </CardContent>
         </Card>
       </div>
@@ -129,18 +168,26 @@ export default function Reports() {
               </TableHeader>
               <TableBody>
                 {sales && sales.length > 0 ? (
-                  sales.slice(0, 5).map((s) => (
-                    <TableRow key={s.id}>
-                      <TableCell className="font-medium text-xs">#{s.id}</TableCell>
-                      <TableCell className="text-xs">{format(s.date, 'MMM dd, HH:mm')}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="text-[10px]">{s.paymentMethod}</Badge>
-                      </TableCell>
-                      <TableCell className="text-right font-bold text-emerald-600">
-                        {formatCurrency(s.total)}
+                  <>
+                    {sales.slice(0, 10).map((s) => (
+                      <TableRow key={s.id}>
+                        <TableCell className="font-medium text-xs">#{s.id}</TableCell>
+                        <TableCell className="text-xs">{format(s.date, 'MMM dd, HH:mm')}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="text-[10px]">{s.paymentMethod}</Badge>
+                        </TableCell>
+                        <TableCell className="text-right font-bold text-emerald-600">
+                          {formatCurrency(s.total)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    <TableRow className="bg-muted/50 font-bold">
+                      <TableCell colSpan={3}>TOTAL REVENUE</TableCell>
+                      <TableCell className="text-right text-emerald-600">
+                        {formatCurrency(sales.reduce((acc, s) => acc + s.total, 0))}
                       </TableCell>
                     </TableRow>
-                  ))
+                  </>
                 ) : (
                   <TableRow>
                     <TableCell colSpan={4} className="h-24 text-center">{t('no_recent_activity')}</TableCell>
@@ -169,7 +216,7 @@ export default function Reports() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {transactions?.filter(t => t.type === 'EXPENSE').slice(0, 5).map((t) => (
+                {transactions?.filter(t => t.type === 'EXPENSE').slice(0, 10).map((t) => (
                   <TableRow key={t.id}>
                     <TableCell className="font-medium">{t.category}</TableCell>
                     <TableCell className="text-xs">{format(t.date, 'MMM dd')}</TableCell>
@@ -178,7 +225,14 @@ export default function Reports() {
                     </TableCell>
                   </TableRow>
                 ))}
-                {!transactions?.filter(t => t.type === 'EXPENSE').length && (
+                {transactions?.filter(t => t.type === 'EXPENSE').length ? (
+                   <TableRow className="bg-muted/50 font-bold">
+                    <TableCell colSpan={2}>TOTAL EXPENSES</TableCell>
+                    <TableCell className="text-right text-destructive">
+                      -{formatCurrency(transactions.filter(t => t.type === 'EXPENSE').reduce((acc, t) => acc + t.amount, 0))}
+                    </TableCell>
+                  </TableRow>
+                ) : (
                   <TableRow>
                     <TableCell colSpan={3} className="h-24 text-center">{t('no_recent_activity')}</TableCell>
                   </TableRow>

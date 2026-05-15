@@ -46,15 +46,26 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/src/components/ui/ta
 import { useTranslation } from '@/src/lib/i18n';
 
 export default function Employees() {
-  const { currentCompany } = useAuthStore();
+  const { currentUser, currentCompany } = useAuthStore();
   const { t, formatCurrency } = useTranslation();
-  const employees = useLiveQuery(() => 
-    currentCompany ? db.users.where('companyId').equals(currentCompany.id!).toArray() : []
-  , [currentCompany]);
+  
+  const employees = useLiveQuery(async () => {
+    if (!currentUser) return [];
+    if (currentUser.role === 'SUPER_ADMIN') {
+      return db.users.toArray();
+    }
+    return currentCompany ? db.users.where('companyId').equals(currentCompany.id!).toArray() : [];
+  }, [currentCompany, currentUser]);
 
-  const departments = useLiveQuery(() => 
-    currentCompany ? db.departments.where('companyId').equals(currentCompany.id!).toArray() : []
-  , [currentCompany]);
+  const departments = useLiveQuery(async () => {
+    if (!currentUser) return [];
+    if (currentUser.role === 'SUPER_ADMIN') {
+      return db.departments.toArray();
+    }
+    return currentCompany ? db.departments.where('companyId').equals(currentCompany.id!).toArray() : [];
+  }, [currentCompany, currentUser]);
+
+  const allCompanies = useLiveQuery(() => db.companies.toArray());
 
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isDeptOpen, setIsDeptOpen] = useState(false);
@@ -280,6 +291,7 @@ export default function Employees() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>{t('employees')}</TableHead>
+                    {currentUser?.role === 'SUPER_ADMIN' && <TableHead>Company</TableHead>}
                     <TableHead>{t('role')}</TableHead>
                     <TableHead>Department</TableHead>
                     <TableHead>{t('subtotal')}</TableHead>
@@ -302,6 +314,11 @@ export default function Employees() {
                             </div>
                           </div>
                         </TableCell>
+                        {currentUser?.role === 'SUPER_ADMIN' && (
+                          <TableCell className="text-xs">
+                            {allCompanies?.find(c => c.id === e.companyId)?.name || 'N/A'}
+                          </TableCell>
+                        )}
                         <TableCell>
                           <Badge variant="secondary" className="capitalize">
                             {e.role.toLowerCase().replace('_', ' ')}

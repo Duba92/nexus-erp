@@ -44,11 +44,18 @@ import { Badge } from '@/src/components/ui/badge';
 import { useTranslation } from '@/src/lib/i18n';
 
 export default function Inventory() {
-  const { currentCompany } = useAuthStore();
+  const { currentUser, currentCompany } = useAuthStore();
   const { t, formatCurrency } = useTranslation();
-  const products = useLiveQuery(() => 
-    currentCompany ? db.products.where('companyId').equals(currentCompany.id!).toArray() : []
-  , [currentCompany]);
+  
+  const products = useLiveQuery(async () => {
+    if (!currentUser) return [];
+    if (currentUser.role === 'SUPER_ADMIN') {
+      return db.products.toArray();
+    }
+    return currentCompany ? db.products.where('companyId').equals(currentCompany.id!).toArray() : [];
+  }, [currentCompany, currentUser]);
+
+  const allCompanies = useLiveQuery(() => db.companies.toArray());
 
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -71,16 +78,12 @@ export default function Inventory() {
     const quantity = parseInt(formData.get('quantity') as string) || 0;
     const lowStockThreshold = parseInt(formData.get('lowStockThreshold') as string) || 5;
     const costPrice = parseFloat(formData.get('costPrice') as string) || 0;
-    const sellingPrice = parseFloat(formData.get('sellingPrice') as string) || 0;
+    // Remove sellingPrice from fixed product definition
     const unit = (formData.get('unit') as string) || 'pcs';
 
     if (!name) {
       toast.error('Product name is required');
       return;
-    }
-
-    if (sellingPrice < costPrice) {
-      toast.warning('Selling price is lower than cost price');
     }
 
     try {
@@ -91,7 +94,7 @@ export default function Inventory() {
         quantity,
         lowStockThreshold,
         costPrice,
-        sellingPrice,
+        sellingPrice: 0, // Default to 0, will be asked at POS
         unit,
         createdAt: new Date(),
       });
@@ -156,13 +159,9 @@ export default function Inventory() {
                   <Label htmlFor="lowStockThreshold">Low Stock Alert Level</Label>
                   <Input id="lowStockThreshold" name="lowStockThreshold" type="number" defaultValue="5" required />
                 </div>
-                <div className="grid gap-2">
+                <div className="grid gap-2 sm:col-span-2">
                   <Label htmlFor="costPrice">Cost Price (ETB)</Label>
                   <Input id="costPrice" name="costPrice" type="number" step="0.01" required />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="sellingPrice">Selling Price (ETB)</Label>
-                  <Input id="sellingPrice" name="sellingPrice" type="number" step="0.01" required />
                 </div>
               </div>
               <DialogFooter>
@@ -173,13 +172,23 @@ export default function Inventory() {
         </Dialog>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Total Products</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{products?.length || 0}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Inventory Value (Cost)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-primary">
+              {formatCurrency(products?.reduce((acc, p) => acc + (p.costPrice * p.quantity), 0) || 0)}
+            </div>
           </CardContent>
         </Card>
         <Card>
@@ -223,65 +232,78 @@ export default function Inventory() {
             <TableHeader>
               <TableRow>
                 <TableHead>{t('products')}</TableHead>
+                {currentUser?.role === 'SUPER_ADMIN' && <TableHead>Company</TableHead>}
                 <TableHead>Barcode</TableHead>
-                <TableHead>Stock</TableHead>
-                <TableHead>Cost</TableHead>
-                <TableHead>{t('price')}</TableHead>
-                <TableHead>Margin</TableHead>
+                <TableHead>Stock Status</TableHead>
+                <TableHead>Cost Price</TableHead>
+                <TableHead>Valuation (Cost)</TableHead>
                 <TableHead className="text-right">{t('actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredProducts && filteredProducts.length > 0 ? (
-                filteredProducts.map((p) => {
-                  const isLowStock = p.quantity <= p.lowStockThreshold;
-                  const margin = (((p.sellingPrice - p.costPrice) / p.sellingPrice) * 100).toFixed(1);
-                  
-                  return (
-                    <TableRow key={p.id}>
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          <Package className="h-4 w-4 text-muted-foreground" />
-                          {p.name}
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-mono text-xs">{p.barcode || '-'}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <span className={cn(
-                            "font-bold",
-                            p.quantity <= 0 ? "text-destructive" : isLowStock ? "text-amber-500" : "text-foreground"
-                          )}>
-                            {p.quantity} {p.unit}
-                          </span>
-                          {isLowStock && (
-                            <AlertTriangle className="h-4 w-4 text-amber-500" />
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>{formatCurrency(p.costPrice)}</TableCell>
-                      <TableCell>{formatCurrency(p.sellingPrice)}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-600 border-none">
-                          {margin}%
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="icon">
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => handleDelete(p.id!)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
+                <>
+                  {filteredProducts.map((p) => {
+                    const isLowStock = p.quantity <= p.lowStockThreshold;
+                    const rowValuation = p.costPrice * p.quantity;
+                    
+                    return (
+                      <TableRow key={p.id}>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            <Package className="h-4 w-4 text-muted-foreground" />
+                            {p.name}
+                          </div>
+                        </TableCell>
+                        {currentUser?.role === 'SUPER_ADMIN' && (
+                          <TableCell className="text-xs">
+                            {allCompanies?.find(c => c.id === p.companyId)?.name || 'N/A'}
+                          </TableCell>
+                        )}
+                        <TableCell className="font-mono text-xs">{p.barcode || '-'}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <span className={cn(
+                              "font-bold",
+                              p.quantity <= 0 ? "text-destructive" : isLowStock ? "text-amber-500" : "text-foreground"
+                            )}>
+                              {p.quantity} {p.unit}
+                            </span>
+                            {isLowStock && (
+                              <AlertTriangle className="h-4 w-4 text-amber-500" />
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>{formatCurrency(p.costPrice)}</TableCell>
+                        <TableCell className="font-medium">{formatCurrency(rowValuation)}</TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="ghost" size="icon">
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => handleDelete(p.id!)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                  <TableRow className="bg-muted/50 font-bold">
+                    <TableCell colSpan={currentUser?.role === 'SUPER_ADMIN' ? 3 : 2}>TOTAL VALUATION</TableCell>
+                    <TableCell>
+                      {filteredProducts.reduce((acc, p) => acc + p.quantity, 0)} Items
+                    </TableCell>
+                    <TableCell>-</TableCell>
+                    <TableCell>
+                      {formatCurrency(filteredProducts.reduce((acc, p) => acc + (p.costPrice * p.quantity), 0))}
+                    </TableCell>
+                    <TableCell />
+                  </TableRow>
+                </>
               ) : (
                 <TableRow>
                   <TableCell colSpan={7} className="h-24 text-center">
