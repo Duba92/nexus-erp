@@ -12,12 +12,10 @@ import {
   Users,
   FileText,
   Settings,
-  Bell,
   LogOut,
   User,
   ChevronRight,
   Menu,
-  Languages,
   Download,
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
@@ -77,16 +75,18 @@ export default function DashboardLayout() {
   const filteredNavItems = navItems.filter(item => {
     if (!currentUser) return false;
     
-    // Super admin sees everything
+    // If the item has role restrictions, check them first
+    if (item.roles && !item.roles.includes(currentUser.role)) {
+      return false;
+    }
+
+    // Super admin sees everything allowed by their role (which is everything)
     if (currentUser.role === 'SUPER_ADMIN') return true;
     
-    // Company admin sees everything within their company scope
+    // Company admin sees everything else (pos, inventory, etc)
     if (currentUser.role === 'COMPANY_ADMIN') return true;
     
-    // Managers/Employees check role and permissions
-    const roleAllowed = !item.roles || item.roles.includes(currentUser.role);
-    
-    // Define feature keys for each path
+    // Managers/Employees check permissions
     const featureMap: Record<string, string> = {
       '/inventory': 'inventory',
       '/pos': 'pos',
@@ -97,7 +97,7 @@ export default function DashboardLayout() {
     const featureKey = featureMap[item.path];
     const permissionAllowed = !featureKey || (currentUser.permissions?.includes(featureKey));
     
-    return roleAllowed && permissionAllowed;
+    return permissionAllowed;
   });
 
   const handleLogout = () => {
@@ -177,29 +177,6 @@ export default function DashboardLayout() {
                 Install
               </Button>
             )}
-            <DropdownMenu>
-              <DropdownMenuTrigger render={<Button variant="ghost" size="icon" />}>
-                <Languages className="h-5 w-5" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Change Language</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setLanguage('en')} className={cn(language === 'en' && "bg-muted font-bold")}>
-                  English
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setLanguage('om')} className={cn(language === 'om' && "bg-muted font-bold")}>
-                  Afaan Oromoo
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setLanguage('am')} className={cn(language === 'am' && "bg-muted font-bold")}>
-                  አማርኛ (Amharic)
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="h-5 w-5" />
-              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-destructive" />
-            </Button>
             
             <DropdownMenu>
               <DropdownMenuTrigger render={<Button variant="ghost" className="relative h-9 w-9 rounded-full p-0" />}>

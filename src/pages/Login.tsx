@@ -15,6 +15,7 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const setAuth = useAuthStore((state) => state.setAuth);
   const navigate = useNavigate();
 
@@ -31,6 +32,9 @@ export default function Login() {
           company = (await db.companies.get(user.companyId)) || null;
         }
         
+        setIsSyncing(true);
+        await new Promise(r => setTimeout(r, 1200));
+
         setAuth(user, company);
         toast.success(`Welcome back, ${user.fullName}`);
         navigate('/');
@@ -42,6 +46,7 @@ export default function Login() {
       console.error(error);
     } finally {
       setIsLoading(false);
+      setIsSyncing(false);
     }
   };
 
@@ -61,7 +66,7 @@ export default function Login() {
           <p className="text-muted-foreground">Professional Efficient POS Solutions</p>
         </div>
 
-        <Card className="border-none shadow-xl">
+        <Card className="border-none shadow-xl overflow-hidden">
           <CardHeader>
             <CardTitle className="text-2xl">Login</CardTitle>
             <CardDescription>
@@ -70,45 +75,59 @@ export default function Login() {
           </CardHeader>
           <form onSubmit={handleLogin}>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="name@example.com"
-                    className="pl-10"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
+              {isSyncing ? (
+                <div className="py-8 flex flex-col items-center gap-4 text-center">
+                  <div className="h-12 w-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                  <div className="space-y-1">
+                    <p className="font-bold text-primary animate-pulse">Syncing Local Data...</p>
+                    <p className="text-xs text-muted-foreground">Securing your business records</p>
+                  </div>
                 </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="••••••••"
-                    className="pl-10"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="email"
+                        type="email"
+                        placeholder="name@example.com"
+                        className="pl-10"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Password</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="password"
+                        type="password"
+                        placeholder="••••••••"
+                        className="pl-10"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
             </CardContent>
-            <CardFooter className="flex flex-col gap-4">
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? 'Signing in...' : 'Sign in'}
-              </Button>
-              <div className="text-center text-sm text-muted-foreground">
-                <p>Default Admin: admin@hullee.com / admin123</p>
-              </div>
-            </CardFooter>
+            {!isSyncing && (
+              <CardFooter className="flex flex-col gap-4">
+                <Button type="submit" className="w-full h-11" disabled={isLoading}>
+                  {isLoading ? 'Checking credentials...' : 'Sign in'}
+                </Button>
+                <div className="text-center text-sm text-muted-foreground">
+                  <p>Default Admin: admin@hullee.com / admin123</p>
+                </div>
+              </CardFooter>
+            )}
           </form>
         </Card>
 

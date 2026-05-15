@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { db, type Company } from '@/src/lib/db';
+import { useAuthStore } from '@/src/store/useAuthStore';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
   Card,

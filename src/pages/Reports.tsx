@@ -1,4 +1,4 @@
-import { db } from '@/src/lib/db';
+import { db, type Product } from '@/src/lib/db';
 import { useAuthStore } from '@/src/store/useAuthStore';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
@@ -25,37 +25,59 @@ import { cn } from '@/src/lib/utils';
 import { useTranslation } from '@/src/lib/i18n';
 
 export default function Reports() {
-  const { currentCompany } = useAuthStore();
+  const { currentCompany, currentUser } = useAuthStore();
   const { t, formatCurrency } = useTranslation();
+  const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN';
   
-  const sales = useLiveQuery(() => 
-    currentCompany ? db.sales.where('companyId').equals(currentCompany.id!).reverse().toArray() : []
-  , [currentCompany]);
+  const sales = useLiveQuery(() => {
+    if (currentCompany) return db.sales.where('companyId').equals(currentCompany.id!).reverse().toArray();
+    if (isSuperAdmin) return db.sales.reverse().toArray();
+    return [];
+  }, [currentCompany, isSuperAdmin]);
 
-  const saleItems = useLiveQuery(() => 
-    currentCompany ? db.saleItems.toArray() : [] // We'll filter in JS if needed or fix schema
-  , [currentCompany]);
+  const saleItems = useLiveQuery(() => {
+    if (currentCompany) return db.saleItems.toArray(); // We'll filter sales first
+    if (isSuperAdmin) return db.saleItems.toArray();
+    return [];
+  }, [currentCompany, isSuperAdmin]);
 
-  const products = useLiveQuery(() => 
-    currentCompany ? db.products.where('companyId').equals(currentCompany.id!).toArray() : []
-  , [currentCompany]);
+  const products = useLiveQuery(() => {
+    if (currentCompany) return db.products.where('companyId').equals(currentCompany.id!).toArray();
+    if (isSuperAdmin) return db.products.toArray();
+    return [];
+  }, [currentCompany, isSuperAdmin]);
 
-  const transactions = useLiveQuery(() => 
-    currentCompany ? db.transactions.where('companyId').equals(currentCompany.id!).reverse().toArray() : []
-  , [currentCompany]);
+  const transactions = useLiveQuery(() => {
+    if (currentCompany) return db.transactions.where('companyId').equals(currentCompany.id!).reverse().toArray();
+    if (isSuperAdmin) return db.transactions.reverse().toArray();
+    return [];
+  }, [currentCompany, isSuperAdmin]);
 
   const totalIncome = transactions?.filter(t => t.type === 'INCOME').reduce((acc, t) => acc + t.amount, 0) || 0;
   const totalExpenses = transactions?.filter(t => t.type === 'EXPENSE').reduce((acc, t) => acc + t.amount, 0) || 0;
   
-  // Real Profit = Total Sales Price - Total Cost of items sold
-  // We need to match sale items with products to get cost
   const realProfit = useLiveQuery(async () => {
-    if (!currentCompany) return 0;
-    const comps = await db.sales.where('companyId').equals(currentCompany.id!).toArray();
+    let salesQuery;
+    if (currentCompany) {
+      salesQuery = db.sales.where('companyId').equals(currentCompany.id!);
+    } else if (isSuperAdmin) {
+      salesQuery = db.sales;
+    } else {
+      return 0;
+    }
+
+    const comps = await salesQuery.toArray();
     const saleIds = comps.map(s => s.id!);
     const items = await db.saleItems.where('saleId').anyOf(saleIds).toArray();
-    const prods = await db.products.where('companyId').equals(currentCompany.id!).toArray();
-    const prodMap = new Map(prods.map(p => [p.id, p]));
+    
+    let productsQuery;
+    if (currentCompany) {
+      productsQuery = db.products.where('companyId').equals(currentCompany.id!);
+    } else {
+      productsQuery = db.products;
+    }
+    const prods = await productsQuery.toArray();
+    const prodMap = new Map<number, Product>(prods.map(p => [p.id!, p]));
     
     return items.reduce((acc, item) => {
       const prod = prodMap.get(item.productId);
@@ -64,7 +86,7 @@ export default function Reports() {
       }
       return acc;
     }, 0);
-  }, [currentCompany]);
+  }, [currentCompany, isSuperAdmin]);
 
   const netProfit = totalIncome - totalExpenses;
 

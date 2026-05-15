@@ -36,8 +36,11 @@ import { useTranslation } from '@/src/lib/i18n';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/src/components/ui/tabs';
 
+import { useLanguageStore } from '@/src/store/useLanguageStore';
+
 export default function Settings() {
   const { currentCompany, currentUser, updateUser } = useAuthStore();
+  const { language, setLanguage } = useLanguageStore();
   const { t } = useTranslation();
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [passwordData, setPasswordData] = useState({ current: '', new: '', confirm: '' });
@@ -309,6 +312,38 @@ export default function Settings() {
         )}
 
         <TabsContent value="appearance" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Language Settings</CardTitle>
+              <CardDescription>Select your preferred language for the interface.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <Button 
+                  variant={language === 'en' ? 'default' : 'outline'} 
+                  className="justify-start gap-2 h-12"
+                  onClick={() => setLanguage('en')}
+                >
+                  <span className="text-xl">🇺🇸</span> English
+                </Button>
+                <Button 
+                  variant={language === 'om' ? 'default' : 'outline'} 
+                  className="justify-start gap-2 h-12"
+                  onClick={() => setLanguage('om')}
+                >
+                  <span className="text-xl">🇪🇹</span> Afaan Oromoo
+                </Button>
+                <Button 
+                  variant={language === 'am' ? 'default' : 'outline'} 
+                  className="justify-start gap-2 h-12"
+                  onClick={() => setLanguage('am')}
+                >
+                  <span className="text-xl">🇪🇹</span> አማርኛ (Amharic)
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>Appearance Settings</CardTitle>
