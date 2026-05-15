@@ -123,9 +123,6 @@ export default function Login() {
                 <Button type="submit" className="w-full h-11" disabled={isLoading}>
                   {isLoading ? 'Checking credentials...' : 'Sign in'}
                 </Button>
-                <div className="text-center text-sm text-muted-foreground">
-                  <p>Default Admin: admin@hullee.com / admin123</p>
-                </div>
               </CardFooter>
             )}
           </form>
