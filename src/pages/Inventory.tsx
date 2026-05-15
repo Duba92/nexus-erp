@@ -60,27 +60,43 @@ export default function Inventory() {
 
   const handleAddProduct = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!currentCompany) return;
+    if (!currentCompany) {
+      toast.error('No company selected. Please log in again or select a company.');
+      return;
+    }
 
     const formData = new FormData(e.currentTarget);
-    
+    const name = formData.get('name') as string;
+    const barcode = formData.get('barcode') as string;
+    const quantity = parseInt(formData.get('quantity') as string);
+    const lowStockThreshold = parseInt(formData.get('lowStockThreshold') as string);
+    const costPrice = parseFloat(formData.get('costPrice') as string);
+    const sellingPrice = parseFloat(formData.get('sellingPrice') as string);
+    const unit = formData.get('unit') as string;
+
+    if (!name || isNaN(quantity) || isNaN(costPrice) || isNaN(sellingPrice)) {
+      toast.error('Please fill in all required fields correctly');
+      return;
+    }
+
     try {
       await db.products.add({
         companyId: currentCompany.id!,
-        name: formData.get('name') as string,
-        barcode: formData.get('barcode') as string,
-        quantity: parseInt(formData.get('quantity') as string),
-        lowStockThreshold: parseInt(formData.get('lowStockThreshold') as string),
-        costPrice: parseFloat(formData.get('costPrice') as string),
-        sellingPrice: parseFloat(formData.get('sellingPrice') as string),
-        unit: formData.get('unit') as string,
+        name,
+        barcode,
+        quantity,
+        lowStockThreshold,
+        costPrice,
+        sellingPrice,
+        unit,
         createdAt: new Date(),
       });
 
       toast.success('Product added successfully');
       setIsAddOpen(false);
     } catch (err) {
-      toast.error('Failed to add product');
+      console.error('Error adding product:', err);
+      toast.error('Failed to add product: ' + (err instanceof Error ? err.message : 'Unknown error'));
     }
   };
 

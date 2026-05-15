@@ -159,3 +159,20 @@ export class NexusDatabase extends Dexie {
 }
 
 export const db = new NexusDatabase();
+
+// Bootstrap initial Super Admin if needed
+async function bootstrap() {
+  const superAdmin = await db.users.where('role').equals('SUPER_ADMIN').first();
+  if (!superAdmin) {
+    await db.users.add({
+      fullName: 'Super Admin',
+      email: 'admin@nexus.erp',
+      passwordHash: 'admin123',
+      role: 'SUPER_ADMIN',
+      createdAt: new Date(),
+    });
+    console.log('Super Admin account bootstrapped: admin@nexus.erp / admin123');
+  }
+}
+
+bootstrap().catch(console.error);

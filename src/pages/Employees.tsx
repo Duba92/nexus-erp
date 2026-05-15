@@ -57,7 +57,25 @@ export default function Employees() {
   , [currentCompany]);
 
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isDeptOpen, setIsDeptOpen] = useState(false);
   const [search, setSearch] = useState('');
+
+  const handleAddDept = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!currentCompany) return;
+    const formData = new FormData(e.currentTarget);
+    try {
+      await db.departments.add({
+        companyId: currentCompany.id!,
+        name: formData.get('name') as string,
+        description: formData.get('description') as string,
+      });
+      toast.success('Department created');
+      setIsDeptOpen(false);
+    } catch (err) {
+      toast.error('Failed to create department');
+    }
+  };
 
   const filteredEmployees = employees?.filter(e => 
     e.fullName.toLowerCase().includes(search.toLowerCase()) || 
@@ -110,11 +128,42 @@ export default function Employees() {
           <h1 className="text-3xl font-bold tracking-tight">{t('employees')}</h1>
           <p className="text-muted-foreground">{t('system_overview')}</p>
         </div>
-        <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-          <DialogTrigger render={<Button />}>
-            <Plus className="mr-2 h-4 w-4" />
-            {t('register_employee')}
-          </DialogTrigger>
+        <div className="flex gap-2">
+          <Dialog open={isDeptOpen} onOpenChange={setIsDeptOpen}>
+            <DialogTrigger render={<Button variant="outline" />}>
+              <Plus className="mr-2 h-4 w-4" />
+              Dept
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <form onSubmit={handleAddDept}>
+                <DialogHeader>
+                  <DialogTitle>Add Department</DialogTitle>
+                  <DialogDescription>
+                    Create a new organizational unit.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="name">Dept Name</Label>
+                    <Input id="name" name="name" required />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="description">Description</Label>
+                    <Input id="description" name="description" />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button type="submit">Create Dept</Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+            <DialogTrigger render={<Button />}>
+              <Plus className="mr-2 h-4 w-4" />
+              {t('register_employee')}
+            </DialogTrigger>
           <DialogContent className="sm:max-w-[525px]">
             <form onSubmit={handleAddEmployee}>
               <DialogHeader>
@@ -202,6 +251,7 @@ export default function Employees() {
           </DialogContent>
         </Dialog>
       </div>
+    </div>
 
       <Tabs defaultValue="list" className="space-y-4">
         <TabsList>
