@@ -64,6 +64,8 @@ export default function Employees() {
     e.email.toLowerCase().includes(search.toLowerCase())
   );
 
+  const [selectedPermissions, setSelectedPermissions] = useState<string[]>(['pos']);
+
   const handleAddEmployee = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!currentCompany) return;
@@ -71,12 +73,15 @@ export default function Employees() {
     const formData = new FormData(e.currentTarget);
     
     try {
+      const role = formData.get('role') as any || 'EMPLOYEE';
+      
       await db.users.add({
         companyId: currentCompany.id!,
         fullName: formData.get('fullName') as string,
         email: formData.get('email') as string,
-        passwordHash: 'employee123',
-        role: formData.get('role') as any || 'EMPLOYEE',
+        passwordHash: formData.get('password') as string || 'employee123',
+        role: role,
+        permissions: selectedPermissions,
         phone: formData.get('phone') as string,
         salary: parseFloat(formData.get('salary') as string),
         departmentId: parseInt(formData.get('departmentId') as string),
@@ -84,6 +89,7 @@ export default function Employees() {
       });
 
       toast.success('Employee registered successfully');
+      setSelectedPermissions(['pos']);
       setIsAddOpen(false);
     } catch (err) {
       toast.error('Failed to register employee');
@@ -157,9 +163,36 @@ export default function Employees() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="grid gap-2 sm:col-span-2">
+                <div className="grid gap-2">
                   <Label htmlFor="salary">Base Salary (ETB)</Label>
                   <Input id="salary" name="salary" type="number" defaultValue="0" />
+                </div>
+                <div className="grid gap-2 sm:col-span-2">
+                  <Label>Feature Access Permissions</Label>
+                  <div className="grid grid-cols-2 gap-2 p-3 border rounded-md">
+                    {['inventory', 'pos', 'hr', 'sales'].map((perm) => (
+                      <div key={perm} className="flex items-center space-x-2">
+                        <input 
+                          type="checkbox" 
+                          id={`perm-${perm}`}
+                          checked={selectedPermissions.includes(perm)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedPermissions([...selectedPermissions, perm]);
+                            } else {
+                              setSelectedPermissions(selectedPermissions.filter(p => p !== perm));
+                            }
+                          }}
+                          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                        />
+                        <Label htmlFor={`perm-${perm}`} className="text-xs capitalize">{perm}</Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="grid gap-2 sm:col-span-2">
+                  <Label htmlFor="password">Initial Password</Label>
+                  <Input id="password" name="password" type="password" defaultValue="employee123" required />
                 </div>
               </div>
               <DialogFooter>

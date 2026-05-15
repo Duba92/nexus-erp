@@ -61,8 +61,8 @@ export default function Companies() {
       await db.users.add({
         companyId: companyId as number,
         fullName: `${formData.get('name')} Admin`,
-        email: `admin@${(formData.get('name') as string).toLowerCase().replace(/\s/g, '')}.com`,
-        passwordHash: 'password123',
+        email: formData.get('email') as string, // Use company email or specify admin email
+        passwordHash: (formData.get('adminPassword') as string) || 'password123',
         role: 'COMPANY_ADMIN',
         createdAt: new Date(),
       });
@@ -122,6 +122,10 @@ export default function Companies() {
                 <div className="grid gap-2">
                   <Label htmlFor="address">Address</Label>
                   <Input id="address" name="address" />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="adminPassword">Admin Initial Password</Label>
+                  <Input id="adminPassword" name="adminPassword" type="password" defaultValue="password123" required />
                 </div>
               </div>
               <DialogFooter>

@@ -74,9 +74,31 @@ export default function DashboardLayout() {
     }
   };
 
-  const filteredNavItems = navItems.filter(item => 
-    !item.roles || (currentUser && item.roles.includes(currentUser.role))
-  );
+  const filteredNavItems = navItems.filter(item => {
+    if (!currentUser) return false;
+    
+    // Super admin sees everything
+    if (currentUser.role === 'SUPER_ADMIN') return true;
+    
+    // Company admin sees everything within their company scope
+    if (currentUser.role === 'COMPANY_ADMIN') return true;
+    
+    // Managers/Employees check role and permissions
+    const roleAllowed = !item.roles || item.roles.includes(currentUser.role);
+    
+    // Define feature keys for each path
+    const featureMap: Record<string, string> = {
+      '/inventory': 'inventory',
+      '/pos': 'pos',
+      '/employees': 'hr',
+      '/reports': 'sales',
+    };
+    
+    const featureKey = featureMap[item.path];
+    const permissionAllowed = !featureKey || (currentUser.permissions?.includes(featureKey));
+    
+    return roleAllowed && permissionAllowed;
+  });
 
   const handleLogout = () => {
     logout();
@@ -151,6 +173,19 @@ export default function DashboardLayout() {
                       {t(item.nameKey)}
                     </Link>
                   ))}
+                  {deferredPrompt && (
+                    <Button 
+                      variant="outline" 
+                      onClick={() => {
+                        handleInstall();
+                        setIsMobileMenuOpen(false);
+                      }} 
+                      className="mt-4 gap-2 bg-emerald-50 text-emerald-600 border-emerald-200"
+                    >
+                      <Download className="h-4 w-4" />
+                      Install App
+                    </Button>
+                  )}
                 </nav>
               </SheetContent>
             </Sheet>

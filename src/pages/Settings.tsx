@@ -31,31 +31,61 @@ import { format as formatDateFns } from 'date-fns';
 import { useTranslation } from '@/src/lib/i18n';
 
 export default function Settings() {
-  const { currentCompany, currentUser } = useAuthStore();
+  const { currentCompany, currentUser, updateUser } = useAuthStore();
   const { t } = useTranslation();
   const [isBackingUp, setIsBackingUp] = useState(false);
+  const [passwordData, setPasswordData] = useState({ current: '', new: '', confirm: '' });
 
   const handleSaveCompany = (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success('Company settings saved (Mock)');
+    toast.success('Company settings saved');
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (passwordData.new !== passwordData.confirm) {
+      return toast.error('New passwords do not match');
+    }
+    if (currentUser?.passwordHash !== passwordData.current) {
+      return toast.error('Current password incorrect');
+    }
+
+    try {
+      await db.users.update(currentUser.id!, { passwordHash: passwordData.new });
+      updateUser({ ...currentUser, passwordHash: passwordData.new });
+      toast.success('Password updated successfully');
+      setPasswordData({ current: '', new: '', confirm: '' });
+    } catch (err) {
+      toast.error('Failed to update password');
+    }
   };
 
   const handleBackup = async () => {
     setIsBackingUp(true);
     try {
-      // Logic for exporting IndexedDB would go here
-      // For this demo, we'll just simulate a download
-      const data = {
-        exportedAt: new Date().toISOString(),
+      const companies = await db.companies.toArray();
+      const users = await db.users.toArray();
+      const products = await db.products.toArray();
+      const sales = await db.sales.toArray();
+      // ... add other tables as needed
+      
+      const backupData = {
+        type: 'NEXUS_EXPORT',
         version: '1.0',
-        note: 'Backup functionality'
+        exportedAt: new Date().toISOString(),
+        data: {
+          companies,
+          users,
+          products,
+          sales
+        }
       };
       
-      const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+      const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `nexus_backup_${formatDate(new Date())}.json`;
+      a.download = `nexus_erp_backup_${new Date().toISOString().split('T')[0]}.json`;
       a.click();
       
       toast.success('Backup file generated successfully');
@@ -66,8 +96,45 @@ export default function Settings() {
     }
   };
 
-  const formatDate = (date: Date) => {
-    return date.toISOString().split('T')[0];
+  const handleRestore = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!confirm('WARNING: This will overwrite all CURRENT data with the backup. Continue?')) {
+      e.target.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const backup = JSON.parse(event.target?.result as string);
+        if (backup.type === 'NEXUS_EXPORT' && backup.data) {
+          const { companies, users, products, sales } = backup.data;
+          
+          await db.transaction('rw', [db.companies, db.users, db.products, db.sales], async () => {
+            await db.companies.clear();
+            await db.users.clear();
+            await db.products.clear();
+            await db.sales.clear();
+            
+            if (companies) await db.companies.bulkAdd(companies);
+            if (users) await db.users.bulkAdd(users);
+            if (products) await db.products.bulkAdd(products);
+            if (sales) await db.sales.bulkAdd(sales);
+          });
+          
+          toast.success('Database restored successfully. Refreshing...');
+          setTimeout(() => window.location.reload(), 1500);
+        } else {
+          toast.error('Invalid backup file format');
+        }
+      } catch (err) {
+        console.error(err);
+        toast.error('Failed to parse backup file');
+      }
+    };
+    reader.readAsText(file);
   };
 
   return (
@@ -128,6 +195,54 @@ export default function Settings() {
             </CardContent>
           </Card>
 
+          {/* Account Security Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Account Security</CardTitle>
+              <CardDescription>Update your login credentials.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleChangePassword} className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="grid gap-2 sm:col-span-2">
+                    <Label htmlFor="currentPassword">Current Password</Label>
+                    <Input 
+                      id="currentPassword" 
+                      type="password" 
+                      value={passwordData.current}
+                      onChange={(e) => setPasswordData({ ...passwordData, current: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="newPassword">New Password</Label>
+                    <Input 
+                      id="newPassword" 
+                      type="password" 
+                      value={passwordData.new}
+                      onChange={(e) => setPasswordData({ ...passwordData, new: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                    <Input 
+                      id="confirmPassword" 
+                      type="password" 
+                      value={passwordData.confirm}
+                      onChange={(e) => setPasswordData({ ...passwordData, confirm: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
+                <Button type="submit" variant="outline" className="gap-2">
+                  <Shield className="h-4 w-4" />
+                  Update Password
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+
           {/* Backup Section */}
           <Card className="border-amber-200 bg-amber-50/30">
             <CardHeader>
@@ -146,10 +261,23 @@ export default function Settings() {
                   <Download className="h-4 w-4" />
                   Export Database
                 </Button>
-                <Button className="flex-1 gap-2" variant="outline" onClick={() => toast.info('Selecting backup file...')}>
-                  <Upload className="h-4 w-4" />
-                  Import Restore
-                </Button>
+                <div className="flex-1">
+                  <Input 
+                    type="file" 
+                    id="restore-upload" 
+                    className="hidden" 
+                    accept=".json" 
+                    onChange={handleRestore} 
+                  />
+                  <Button 
+                    className="w-full gap-2" 
+                    variant="outline" 
+                    onClick={() => document.getElementById('restore-upload')?.click()}
+                  >
+                    <Upload className="h-4 w-4" />
+                    Import Restore
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>

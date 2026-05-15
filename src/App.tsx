@@ -19,15 +19,34 @@ import DashboardLayout from './components/layout/DashboardLayout';
 import { db } from './lib/db';
 import { PWAUpdater } from './components/PWAUpdater';
 
-function ProtectedRoute({ children, roles }: { children: React.ReactNode; roles?: string[] }) {
+function ProtectedRoute({ 
+  children, 
+  roles, 
+  permission 
+}: { 
+  children: React.ReactNode; 
+  roles?: string[]; 
+  permission?: string;
+}) {
   const { isAuthenticated, currentUser } = useAuthStore();
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
-  if (roles && currentUser && !roles.includes(currentUser.role)) {
-    return <Navigate to="/" replace />;
+  if (currentUser) {
+    // Role check
+    if (roles && !roles.includes(currentUser.role)) {
+      return <Navigate to="/" replace />;
+    }
+
+    // Permission check for employees/managers
+    if (permission && 
+        currentUser.role !== 'SUPER_ADMIN' && 
+        currentUser.role !== 'COMPANY_ADMIN' && 
+        !currentUser.permissions?.includes(permission)) {
+      return <Navigate to="/" replace />;
+    }
   }
 
   return <>{children}</>;
@@ -62,10 +81,10 @@ export default function App() {
         <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
           <Route path="/" element={<Dashboard />} />
           <Route path="/companies" element={<ProtectedRoute roles={['SUPER_ADMIN']}><Companies /></ProtectedRoute>} />
-          <Route path="/inventory" element={<Inventory />} />
-          <Route path="/pos" element={<POS />} />
-          <Route path="/employees" element={<Employees />} />
-          <Route path="/reports" element={<Reports />} />
+          <Route path="/inventory" element={<ProtectedRoute permission="inventory"><Inventory /></ProtectedRoute>} />
+          <Route path="/pos" element={<ProtectedRoute permission="pos"><POS /></ProtectedRoute>} />
+          <Route path="/employees" element={<ProtectedRoute permission="hr"><Employees /></ProtectedRoute>} />
+          <Route path="/reports" element={<ProtectedRoute permission="sales"><Reports /></ProtectedRoute>} />
           <Route path="/settings" element={<Settings />} />
         </Route>
 

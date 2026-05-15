@@ -18,6 +18,7 @@ export interface User {
   email: string;
   passwordHash: string;
   role: 'SUPER_ADMIN' | 'COMPANY_ADMIN' | 'MANAGER' | 'CASHIER' | 'EMPLOYEE';
+  permissions?: string[]; // List of feature keys (e.g., 'inventory', 'sales', 'hr', 'pos')
   phone?: string;
   address?: string;
   salary?: number;

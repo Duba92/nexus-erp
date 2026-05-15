@@ -7,6 +7,7 @@ interface AuthState {
   currentCompany: Company | null;
   isAuthenticated: boolean;
   setAuth: (user: User, company: Company | null) => void;
+  updateUser: (user: User) => void;
   logout: () => void;
 }
 
@@ -17,6 +18,7 @@ export const useAuthStore = create<AuthState>()(
       currentCompany: null,
       isAuthenticated: false,
       setAuth: (user, company) => set({ currentUser: user, currentCompany: company, isAuthenticated: true }),
+      updateUser: (user) => set({ currentUser: user }),
       logout: () => set({ currentUser: null, currentCompany: null, isAuthenticated: false }),
     }),
     {
