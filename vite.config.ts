@@ -12,7 +12,7 @@ export default defineConfig(({mode}) => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
+        includeAssets: ['favicon.ico', 'icon.svg', 'apple-touch-icon.png'],
         manifest: {
           name: 'Hullee POS & HRM',
           short_name: 'Hullee',
@@ -20,22 +20,41 @@ export default defineConfig(({mode}) => {
           theme_color: '#0f172a',
           background_color: '#ffffff',
           display: 'standalone',
+          orientation: 'portrait',
+          scope: '/',
+          start_url: '/',
           icons: [
             {
-              src: 'pwa-192x192.png',
+              src: 'icon.svg',
               sizes: '192x192',
-              type: 'image/png'
+              type: 'image/svg+xml'
             },
             {
-              src: 'pwa-512x512.png',
+              src: 'icon.svg',
               sizes: '512x512',
-              type: 'image/png'
+              type: 'image/svg+xml'
             },
             {
-              src: 'pwa-512x512.png',
+              src: 'icon.svg',
               sizes: '512x512',
-              type: 'image/png',
+              type: 'image/svg+xml',
               purpose: 'any maskable'
+            }
+          ],
+          shortcuts: [
+            {
+              name: 'POS',
+              short_name: 'POS',
+              description: 'Open Point of Sale',
+              url: '/pos',
+              icons: [{ src: 'icon.svg', sizes: '192x192' }]
+            },
+            {
+              name: 'Inventory',
+              short_name: 'Inv',
+              description: 'Check Inventory',
+              url: '/inventory',
+              icons: [{ src: 'icon.svg', sizes: '192x192' }]
             }
           ]
         },

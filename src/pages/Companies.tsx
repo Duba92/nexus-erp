@@ -31,6 +31,7 @@ import { Label } from '@/src/components/ui/label';
 import { Plus, Search, Building2, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslation } from '@/src/lib/i18n';
+import { Separator } from '@/src/components/ui/separator';
 
 export default function Companies() {
   const { t } = useTranslation();
@@ -61,16 +62,17 @@ export default function Companies() {
       await db.users.add({
         companyId: companyId as number,
         fullName: `${formData.get('name')} Admin`,
-        email: formData.get('email') as string, // Use company email or specify admin email
+        email: formData.get('adminEmail') as string,
         passwordHash: (formData.get('adminPassword') as string) || 'password123',
         role: 'COMPANY_ADMIN',
         createdAt: new Date(),
       });
 
-      toast.success('Company created successfully');
+      toast.success('Company and Admin account created');
       setIsCreateOpen(false);
     } catch (err) {
       toast.error('Failed to create company');
+      console.error(err);
     }
   };
 
@@ -109,22 +111,27 @@ export default function Companies() {
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="email">{t('email')}</Label>
-                  <Input id="email" name="email" type="email" required />
+                  <Input id="email" name="email" type="email" placeholder="company@example.com" required />
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="phone">{t('phone')}</Label>
-                  <Input id="phone" name="phone" />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="taxId">Tax Information (Optional)</Label>
-                  <Input id="taxId" name="taxId" />
+                  <Input id="phone" name="phone" placeholder="+251 ..." />
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="address">Address</Label>
-                  <Input id="address" name="address" />
+                  <Input id="address" name="address" placeholder="Addis Ababa, ..." />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="adminPassword">Admin Initial Password</Label>
+                  <Label htmlFor="taxId">Tax ID / VAT</Label>
+                  <Input id="taxId" name="taxId" placeholder="12345..." />
+                </div>
+                <Separator className="my-2" />
+                <div className="grid gap-2">
+                  <Label htmlFor="adminEmail" className="text-primary font-bold">Owner Login Email</Label>
+                  <Input id="adminEmail" name="adminEmail" type="email" placeholder="admin@example.com" required />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="adminPassword">Owner Initial Password</Label>
                   <Input id="adminPassword" name="adminPassword" type="password" defaultValue="password123" required />
                 </div>
               </div>

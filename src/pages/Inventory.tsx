@@ -68,15 +68,19 @@ export default function Inventory() {
     const formData = new FormData(e.currentTarget);
     const name = formData.get('name') as string;
     const barcode = formData.get('barcode') as string;
-    const quantity = parseInt(formData.get('quantity') as string);
-    const lowStockThreshold = parseInt(formData.get('lowStockThreshold') as string);
-    const costPrice = parseFloat(formData.get('costPrice') as string);
-    const sellingPrice = parseFloat(formData.get('sellingPrice') as string);
-    const unit = formData.get('unit') as string;
+    const quantity = parseInt(formData.get('quantity') as string) || 0;
+    const lowStockThreshold = parseInt(formData.get('lowStockThreshold') as string) || 5;
+    const costPrice = parseFloat(formData.get('costPrice') as string) || 0;
+    const sellingPrice = parseFloat(formData.get('sellingPrice') as string) || 0;
+    const unit = (formData.get('unit') as string) || 'pcs';
 
-    if (!name || isNaN(quantity) || isNaN(costPrice) || isNaN(sellingPrice)) {
-      toast.error('Please fill in all required fields correctly');
+    if (!name) {
+      toast.error('Product name is required');
       return;
+    }
+
+    if (sellingPrice < costPrice) {
+      toast.warning('Selling price is lower than cost price');
     }
 
     try {
@@ -96,7 +100,11 @@ export default function Inventory() {
       setIsAddOpen(false);
     } catch (err) {
       console.error('Error adding product:', err);
-      toast.error('Failed to add product: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      if (err instanceof Error && err.name === 'ConstraintError') {
+        toast.error('A product with this barcode already exists');
+      } else {
+        toast.error('Failed to add product: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      }
     }
   };
 

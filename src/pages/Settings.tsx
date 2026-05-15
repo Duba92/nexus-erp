@@ -23,12 +23,18 @@ import {
   Download,
   Upload,
   User as UserIcon,
+  Building2,
+  AlertTriangle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Separator } from '@/src/components/ui/separator';
 import { format as formatDateFns } from 'date-fns';
+import { Badge } from '@/src/components/ui/badge';
+import { Avatar, AvatarFallback } from '@/src/components/ui/avatar';
 
 import { useTranslation } from '@/src/lib/i18n';
+
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/src/components/ui/tabs';
 
 export default function Settings() {
   const { currentCompany, currentUser, updateUser } = useAuthStore();
@@ -84,18 +90,24 @@ export default function Settings() {
       const companies = await db.companies.toArray();
       const users = await db.users.toArray();
       const products = await db.products.toArray();
+      const categories = await db.categories.toArray();
+      const suppliers = await db.suppliers.toArray();
+      const departments = await db.departments.toArray();
       const sales = await db.sales.toArray();
-      // ... add other tables as needed
+      const saleItems = await db.saleItems.toArray();
+      const purchases = await db.purchases.toArray();
+      const purchaseItems = await db.purchaseItems.toArray();
+      const transactions = await db.transactions.toArray();
+      const attendance = await db.attendance.toArray();
       
       const backupData = {
         type: 'NEXUS_EXPORT',
         version: '1.0',
         exportedAt: new Date().toISOString(),
         data: {
-          companies,
-          users,
-          products,
-          sales
+          companies, users, products, categories, suppliers, 
+          departments, sales, saleItems, purchases, 
+          purchaseItems, transactions, attendance
         }
       };
       
@@ -103,12 +115,13 @@ export default function Settings() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `nexus_erp_backup_${new Date().toISOString().split('T')[0]}.json`;
+      a.download = `nexus_erp_full_backup_${new Date().toISOString().split('T')[0]}.json`;
       a.click();
       
-      toast.success('Backup file generated successfully');
+      toast.success('Full database backup generated');
     } catch (err) {
       toast.error('Backup failed');
+      console.error(err);
     } finally {
       setIsBackingUp(false);
     }
@@ -118,7 +131,7 @@ export default function Settings() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!confirm('WARNING: This will overwrite all CURRENT data with the backup. Continue?')) {
+    if (!confirm('WARNING: This will wipe ALL current local data and replace it with the backup. Continue?')) {
       e.target.value = '';
       return;
     }
@@ -128,28 +141,46 @@ export default function Settings() {
       try {
         const backup = JSON.parse(event.target?.result as string);
         if (backup.type === 'NEXUS_EXPORT' && backup.data) {
-          const { companies, users, products, sales } = backup.data;
+          const { 
+            companies, users, products, categories, suppliers, 
+            departments, sales, saleItems, purchases, 
+            purchaseItems, transactions, attendance 
+          } = backup.data;
           
-          await db.transaction('rw', [db.companies, db.users, db.products, db.sales], async () => {
-            await db.companies.clear();
-            await db.users.clear();
-            await db.products.clear();
-            await db.sales.clear();
+          await db.transaction('rw', [
+            db.companies, db.users, db.products, db.categories, 
+            db.suppliers, db.departments, db.sales, db.saleItems, 
+            db.purchases, db.purchaseItems, db.transactions, db.attendance
+          ], async () => {
+            await Promise.all([
+              db.companies.clear(), db.users.clear(), db.products.clear(), 
+              db.categories.clear(), db.suppliers.clear(), db.departments.clear(), 
+              db.sales.clear(), db.saleItems.clear(), db.purchases.clear(), 
+              db.purchaseItems.clear(), db.transactions.clear(), db.attendance.clear()
+            ]);
             
             if (companies) await db.companies.bulkAdd(companies);
             if (users) await db.users.bulkAdd(users);
             if (products) await db.products.bulkAdd(products);
+            if (categories) await db.categories.bulkAdd(categories);
+            if (suppliers) await db.suppliers.bulkAdd(suppliers);
+            if (departments) await db.departments.bulkAdd(departments);
             if (sales) await db.sales.bulkAdd(sales);
+            if (saleItems) await db.saleItems.bulkAdd(saleItems);
+            if (purchases) await db.purchases.bulkAdd(purchases);
+            if (purchaseItems) await db.purchaseItems.bulkAdd(purchaseItems);
+            if (transactions) await db.transactions.bulkAdd(transactions);
+            if (attendance) await db.attendance.bulkAdd(attendance);
           });
           
-          toast.success('Database restored successfully. Refreshing...');
+          toast.success('Database restored successfully. System will reload.');
           setTimeout(() => window.location.reload(), 1500);
         } else {
           toast.error('Invalid backup file format');
         }
       } catch (err) {
         console.error(err);
-        toast.error('Failed to parse backup file');
+        toast.error('Failed to parse or apply backup');
       }
     };
     reader.readAsText(file);
@@ -157,29 +188,91 @@ export default function Settings() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">{t('settings')}</h1>
-        <p className="text-muted-foreground">{t('system_overview')}</p>
+      <div className="flex flex-col gap-1">
+        <h1 className="text-3xl font-bold tracking-tight text-primary">Settings</h1>
+        <p className="text-muted-foreground">Manage your personal profile and business configurations.</p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3">
-        <aside className="space-y-1">
-          <Button variant="ghost" className="w-full justify-start gap-2 bg-muted">
-            <User className="h-4 w-4" />
-            {t('profile')}
-          </Button>
-          <Button variant="ghost" className="w-full justify-start gap-2">
-            <SettingsIcon className="h-4 w-4" />
-            {t('settings')}
-          </Button>
-        </aside>
+      <Tabs defaultValue="profile" className="space-y-6">
+        <TabsList className="bg-muted/50 p-1">
+          <TabsTrigger value="profile">Account</TabsTrigger>
+          {isAdmin && <TabsTrigger value="company">Company</TabsTrigger>}
+          {isAdmin && <TabsTrigger value="data">Data Management</TabsTrigger>}
+        </TabsList>
 
-        <div className="md:col-span-2 space-y-6">
-          {/* Company Profile Section */}
-          {isAdmin && (
+        <TabsContent value="profile" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>User Profile</CardTitle>
+              <CardDescription>Your personal information and system role.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-4 p-4 rounded-xl bg-muted/30">
+                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xl">
+                  {currentUser?.fullName.charAt(0)}
+                </div>
+                <div>
+                  <h3 className="font-bold">{currentUser?.fullName}</h3>
+                  <p className="text-sm text-muted-foreground">{currentUser?.email}</p>
+                  <Badge variant="outline" className="mt-1 uppercase text-[10px]">{currentUser?.role}</Badge>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Security</CardTitle>
+              <CardDescription>Update your password to keep your account secure.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleChangePassword} className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="grid gap-2 sm:col-span-2">
+                    <Label htmlFor="currentPassword">Current Password</Label>
+                    <Input 
+                      id="currentPassword" 
+                      type="password" 
+                      value={passwordData.current}
+                      onChange={(e) => setPasswordData({ ...passwordData, current: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="newPassword">New Password</Label>
+                    <Input 
+                      id="newPassword" 
+                      type="password" 
+                      value={passwordData.new}
+                      onChange={(e) => setPasswordData({ ...passwordData, new: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="confirmPassword">Confirm Password</Label>
+                    <Input 
+                      id="confirmPassword" 
+                      type="password" 
+                      value={passwordData.confirm}
+                      onChange={(e) => setPasswordData({ ...passwordData, confirm: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
+                <Button type="submit" className="gap-2">
+                  <Shield className="h-4 w-4" />
+                  Save New Password
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {isAdmin && (
+          <TabsContent value="company" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Company Profile</CardTitle>
+                <CardTitle>Business Profile</CardTitle>
                 <CardDescription>Setup your business identity for invoices and reports.</CardDescription>
               </CardHeader>
               <CardContent>
@@ -213,76 +306,32 @@ export default function Settings() {
                 </form>
               </CardContent>
             </Card>
-          )}
+          </TabsContent>
+        )}
 
-          {/* Account Security Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Account Security</CardTitle>
-              <CardDescription>Update your login credentials.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleChangePassword} className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="grid gap-2 sm:col-span-2">
-                    <Label htmlFor="currentPassword">Current Password</Label>
-                    <Input 
-                      id="currentPassword" 
-                      type="password" 
-                      value={passwordData.current}
-                      onChange={(e) => setPasswordData({ ...passwordData, current: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="newPassword">New Password</Label>
-                    <Input 
-                      id="newPassword" 
-                      type="password" 
-                      value={passwordData.new}
-                      onChange={(e) => setPasswordData({ ...passwordData, new: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                    <Input 
-                      id="confirmPassword" 
-                      type="password" 
-                      value={passwordData.confirm}
-                      onChange={(e) => setPasswordData({ ...passwordData, confirm: e.target.value })}
-                      required
-                    />
-                  </div>
-                </div>
-                <Button type="submit" variant="outline" className="gap-2">
-                  <Shield className="h-4 w-4" />
-                  Update Password
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-
-          {/* Backup Section */}
-          {isAdmin && (
-            <Card className="border-amber-200 bg-amber-50/30">
+        {isAdmin && (
+          <TabsContent value="data" className="space-y-6">
+            <Card className="border-amber-200 bg-amber-50/20">
               <CardHeader>
-                <CardTitle className="text-amber-800">Local Data Backup</CardTitle>
-                <CardDescription className="text-amber-700/70">
-                  Nexus ERP stores all data locally. Download backups to keep your data safe outside this device.
-                </CardDescription>
+                <CardTitle className="text-amber-800 flex items-center gap-2">
+                  <Database className="h-5 w-5" />
+                  Backup & Recovery
+                </CardTitle>
+                <CardDescription>Nexus ERP stores data locally. Frequent backups are recommended.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex flex-col gap-2 p-4 bg-white/50 rounded-lg border border-amber-200">
-                  <h4 className="font-bold text-sm">Automatic Backups</h4>
-                  <p className="text-xs text-muted-foreground">The system automatically backs up data every 24 hours to your local cache.</p>
-                </div>
-                <div className="flex gap-4">
-                  <Button className="flex-1 gap-2" variant="outline" onClick={handleBackup} disabled={isBackingUp}>
-                    <Download className="h-4 w-4" />
-                    Export Database
-                  </Button>
-                  <div className="flex-1">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="p-4 border bg-white rounded-lg">
+                    <h4 className="font-bold text-sm mb-2">Export Data</h4>
+                    <p className="text-xs text-muted-foreground mb-4">Save all system data to a JSON file for safe keeping.</p>
+                    <Button onClick={handleBackup} disabled={isBackingUp} variant="outline" className="w-full gap-2">
+                      <Download className="h-4 w-4" />
+                      Download Backup
+                    </Button>
+                  </div>
+                  <div className="p-4 border bg-white rounded-lg">
+                    <h4 className="font-bold text-sm mb-2">Import Data</h4>
+                    <p className="text-xs text-muted-foreground mb-4">Restore data from a previously exported Nexus file.</p>
                     <Input 
                       type="file" 
                       id="restore-upload" 
@@ -291,42 +340,42 @@ export default function Settings() {
                       onChange={handleRestore} 
                     />
                     <Button 
-                      className="w-full gap-2" 
-                      variant="outline" 
                       onClick={() => document.getElementById('restore-upload')?.click()}
+                      variant="outline" 
+                      className="w-full gap-2 border-emerald-200 text-emerald-700 hover:bg-emerald-50"
                     >
                       <Upload className="h-4 w-4" />
-                      Import Restore
+                      Upload & Restore
                     </Button>
                   </div>
                 </div>
               </CardContent>
             </Card>
-          )}
 
-          {/* Danger Zone */}
-          {isAdmin && (
-            <Card className="border-destructive/20">
+            <Card className="border-destructive/20 bg-destructive/5">
               <CardHeader>
-                <CardTitle className="text-destructive">Danger Zone</CardTitle>
+                <CardTitle className="text-destructive text-sm">Danger Zone</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="flex items-center justify-between py-2">
+                <div className="flex items-center justify-between p-3 border border-destructive/10 rounded-lg bg-white">
                   <div>
-                    <p className="font-bold text-sm">Clear Local Data</p>
-                    <p className="text-xs text-muted-foreground">Wipe all databases and start fresh. This cannot be undone.</p>
+                    <h4 className="font-bold text-sm">Wipe Local Storage</h4>
+                    <p className="text-xs text-muted-foreground">Clear all databases and reset the application.</p>
                   </div>
                   <Button variant="destructive" size="sm" onClick={() => {
-                    if(confirm('Wipe everything?')) {
-                      db.delete().then(() => window.location.reload());
+                    if(confirm('This will DELETE all local data forever. Are you sure?')) {
+                      db.delete().then(() => {
+                        localStorage.clear();
+                        window.location.reload();
+                      });
                     }
-                  }}>Wipe Storage</Button>
+                  }}>Reset System</Button>
                 </div>
               </CardContent>
             </Card>
-          )}
-        </div>
-      </div>
+          </TabsContent>
+        )}
+      </Tabs>
     </div>
   );
 }
