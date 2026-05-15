@@ -1,0 +1,45 @@
+{
+  "name": "Hullee POS & HRM",
+  "short_name": "Hullee",
+  "description": "Inventory, POS, and HR Management System for Ethiopia",
+  "theme_color": "#0f172a",
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "orientation": "portrait",
+  "scope": "/",
+  "start_url": "/",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "POS",
+      "short_name": "POS",
+      "url": "/pos",
+      "icons": [{ "src": "icon.svg", "sizes": "192x192" }]
+    },
+    {
+      "name": "Inventory",
+      "short_name": "Inv",
+      "url": "/inventory",
+      "icons": [{ "src": "icon.svg", "sizes": "192x192" }]
+    }
+  ]
+}
