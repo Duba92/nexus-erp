@@ -1,0 +1,106 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Global Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isSuperAdmin() {
+      return isSignedIn() && getUserData().role == 'SUPER_ADMIN';
+    }
+
+    function isCompanyMember(companyId) {
+      return isSignedIn() && (isSuperAdmin() || getUserData().companyId == companyId);
+    }
+
+    // 1. Users Collection
+    match /users/{userId} {
+      function isValidUser(data) {
+        return data.fullName is string && data.fullName.size() <= 200 &&
+               data.phone is string && data.phone.size() <= 20 &&
+               data.role in ['SUPER_ADMIN', 'COMPANY_ADMIN', 'MANAGER', 'CASHIER', 'EMPLOYEE'] &&
+               data.createdAt is timestamp;
+      }
+
+      allow read: if isSignedIn() && (isOwner(userId) || isSuperAdmin() || getUserData().companyId == resource.data.companyId);
+      allow create: if isSignedIn() && (isSuperAdmin() || (getUserData().role == 'COMPANY_ADMIN' && request.resource.data.companyId == getUserData().companyId)) && isValidUser(request.resource.data);
+      allow update: if isSignedIn() && (isOwner(userId) || isSuperAdmin() || (getUserData().role == 'COMPANY_ADMIN' && resource.data.companyId == getUserData().companyId)) && 
+                     isValidUser(request.resource.data) &&
+                     request.resource.data.role == resource.data.role; // Role cannot be changed by user
+      allow delete: if isSuperAdmin();
+    }
+
+    // 2. Companies Collection
+    match /companies/{companyId} {
+      function isValidCompany(data) {
+        return data.name is string && data.name.size() <= 200 &&
+               data.createdAt is timestamp;
+      }
+
+      allow read: if isSignedIn() && (isSuperAdmin() || getUserData().companyId == companyId);
+      allow create: if isSuperAdmin();
+      allow update: if isSuperAdmin() && isValidCompany(request.resource.data);
+      allow delete: if isSuperAdmin();
+    }
+
+    // 3. Products Collection
+    match /products/{productId} {
+      function isValidProduct(data) {
+        return data.name is string && data.name.size() <= 200 &&
+               data.companyId is string &&
+               data.quantity is number &&
+               data.costPrice is number &&
+               data.sellingPrice is number &&
+               data.createdAt is timestamp;
+      }
+
+      allow read: if isSignedIn() && isCompanyMember(resource.data.companyId);
+      allow create: if isSignedIn() && isCompanyMember(request.resource.data.companyId) && isValidProduct(request.resource.data);
+      allow update: if isSignedIn() && isCompanyMember(resource.data.companyId) && isValidProduct(request.resource.data);
+      allow delete: if isSignedIn() && isCompanyMember(resource.data.companyId);
+    }
+
+    // 4. Loans Collection
+    match /loans/{loanId} {
+      function isValidLoan(data) {
+        return data.borrowerName is string && data.borrowerName.size() <= 200 &&
+               data.companyId is string &&
+               data.amount is number &&
+               data.type in ['GIVEN', 'TAKEN'] &&
+               data.status in ['PENDING', 'PARTIAL', 'PAID'] &&
+               data.createdAt is timestamp;
+      }
+
+      allow read: if isSignedIn() && isCompanyMember(resource.data.companyId);
+      allow create: if isSignedIn() && isCompanyMember(request.resource.data.companyId) && isValidLoan(request.resource.data);
+      allow update: if isSignedIn() && isCompanyMember(resource.data.companyId) && isValidLoan(request.resource.data);
+      allow delete: if isSignedIn() && isCompanyMember(resource.data.companyId);
+    }
+
+    // 5. Sales Collection
+    match /sales/{saleId} {
+      allow read: if isSignedIn() && isCompanyMember(resource.data.companyId);
+      allow create: if isSignedIn() && isCompanyMember(request.resource.data.companyId);
+      allow update: if false; // Sales are immutable
+      allow delete: if isSuperAdmin();
+    }
+  }
+}

@@ -1,0 +1,82 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "System user (Admin, Employee, etc)",
+      "type": "object",
+      "properties": {
+        "fullName": { "type": "string" },
+        "phone": { "type": "string" },
+        "role": { "type": "string", "enum": ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "CASHIER", "EMPLOYEE"] },
+        "companyId": { "type": "string" },
+        "permissions": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["fullName", "phone", "role", "createdAt"]
+    },
+    "Company": {
+      "title": "Company",
+      "description": "Business entity",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "address": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "createdAt"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Inventory item",
+      "type": "object",
+      "properties": {
+        "companyId": { "type": "string" },
+        "name": { "type": "string" },
+        "quantity": { "type": "number" },
+        "costPrice": { "type": "number" },
+        "sellingPrice": { "type": "number" },
+        "unit": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["companyId", "name", "quantity", "costPrice", "sellingPrice", "createdAt"]
+    },
+    "Loan": {
+      "title": "Loan",
+      "description": "Credit or debt record",
+      "type": "object",
+      "properties": {
+        "companyId": { "type": "string" },
+        "borrowerName": { "type": "string" },
+        "phone": { "type": "string" },
+        "amount": { "type": "number" },
+        "remainingAmount": { "type": "number" },
+        "type": { "type": "string", "enum": ["GIVEN", "TAKEN"] },
+        "status": { "type": "string", "enum": ["PENDING", "PARTIAL", "PAID"] },
+        "dueDate": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["companyId", "borrowerName", "amount", "type", "status", "createdAt"]
+    },
+    "Sale": {
+      "title": "Sale",
+      "description": "POS Sale record",
+      "type": "object",
+      "properties": {
+        "companyId": { "type": "string" },
+        "userId": { "type": "string" },
+        "total": { "type": "number" },
+        "date": { "type": "string", "format": "date-time" }
+      },
+      "required": ["companyId", "userId", "total", "date"]
+    }
+  },
+  "firestore": {
+    "users": { "schema": "User", "description": "Global users" },
+    "companies": { "schema": "Company", "description": "Registered companies" },
+    "products": { "schema": "Product", "description": "Company products" },
+    "loans": { "schema": "Loan", "description": "Company loans" },
+    "sales": { "schema": "Sale", "description": "Company sales" }
+  }
+}

@@ -61,8 +61,7 @@ export default function Inventory() {
   const [search, setSearch] = useState('');
 
   const filteredProducts = products?.filter(p => 
-    p.name.toLowerCase().includes(search.toLowerCase()) || 
-    p.barcode?.includes(search)
+    p.name.toLowerCase().includes(search.toLowerCase())
   );
 
   const handleAddProduct = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -74,7 +73,6 @@ export default function Inventory() {
 
     const formData = new FormData(e.currentTarget);
     const name = formData.get('name') as string;
-    const barcode = formData.get('barcode') as string;
     const quantity = parseInt(formData.get('quantity') as string) || 0;
     const lowStockThreshold = parseInt(formData.get('lowStockThreshold') as string) || 5;
     const costPrice = parseFloat(formData.get('costPrice') as string) || 0;
@@ -90,7 +88,6 @@ export default function Inventory() {
       await db.products.add({
         companyId: currentCompany.id!,
         name,
-        barcode,
         quantity,
         lowStockThreshold,
         costPrice,
@@ -144,10 +141,6 @@ export default function Inventory() {
                   <Input id="name" name="name" required />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="barcode">Barcode / SKU</Label>
-                  <Input id="barcode" name="barcode" />
-                </div>
-                <div className="grid gap-2">
                   <Label htmlFor="unit">Unit (e.g., pcs, kg, box)</Label>
                   <Input id="unit" name="unit" defaultValue="pcs" />
                 </div>
@@ -183,7 +176,7 @@ export default function Inventory() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Inventory Value (Cost)</CardTitle>
+            <CardTitle className="text-sm font-medium">Now Balance</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-primary">
@@ -233,7 +226,6 @@ export default function Inventory() {
               <TableRow>
                 <TableHead>{t('products')}</TableHead>
                 {currentUser?.role === 'SUPER_ADMIN' && <TableHead>Company</TableHead>}
-                <TableHead>Barcode</TableHead>
                 <TableHead>Stock Status</TableHead>
                 <TableHead>Cost Price</TableHead>
                 <TableHead>Valuation (Cost)</TableHead>
@@ -260,7 +252,6 @@ export default function Inventory() {
                             {allCompanies?.find(c => c.id === p.companyId)?.name || 'N/A'}
                           </TableCell>
                         )}
-                        <TableCell className="font-mono text-xs">{p.barcode || '-'}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <span className={cn(

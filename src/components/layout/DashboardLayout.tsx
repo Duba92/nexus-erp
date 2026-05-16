@@ -34,11 +34,12 @@ import { Sheet, SheetContent, SheetTrigger } from '@/src/components/ui/sheet';
 import { ScrollArea } from '@/src/components/ui/scroll-area';
 import { useEffect } from 'react';
 
-const navItems: { nameKey: TranslationKey; path: string; icon: any; roles?: string[] }[] = [
+const navItems: { nameKey: string; path: string; icon: any; roles?: string[] }[] = [
   { nameKey: 'dashboard', path: '/', icon: LayoutDashboard },
   { nameKey: 'companies', path: '/companies', icon: Building2, roles: ['SUPER_ADMIN'] },
   { nameKey: 'pos', path: '/pos', icon: ShoppingCart },
   { nameKey: 'inventory', path: '/inventory', icon: Package },
+  { nameKey: 'loans', path: '/loans', icon: FileText },
   { nameKey: 'employees', path: '/employees', icon: Users },
   { nameKey: 'expenses', path: '/expenses', icon: FileText },
   { nameKey: 'reports', path: '/reports', icon: FileText },
@@ -112,7 +113,7 @@ export default function DashboardLayout() {
         <div className="flex h-16 items-center px-6">
           <Link to="/" className="flex items-center gap-2 font-bold text-xl">
             <Building2 className="h-6 w-6 text-primary" />
-            <span>Hullee POS & HRM</span>
+            <span>Hullee</span>
           </Link>
         </div>
         <ScrollArea className="flex-1 px-3">
@@ -127,7 +128,7 @@ export default function DashboardLayout() {
                 )}
               >
                 <item.icon className="h-4 w-4" />
-                {t(item.nameKey)}
+                {t(item.nameKey as any)}
               </Link>
             ))}
           </nav>
@@ -216,33 +217,33 @@ export default function DashboardLayout() {
         </main>
 
         {/* Mobile Bottom Navigation */}
-        <nav className="fixed bottom-0 left-0 z-50 w-full h-16 bg-background/95 backdrop-blur border-t md:hidden flex items-center justify-around px-2 pb-safe">
-          {filteredNavItems.slice(0, 5).map((item) => (
+        <nav className="fixed bottom-0 left-0 z-50 w-full h-14 bg-background/95 backdrop-blur border-t md:hidden flex items-center justify-around px-2 pb-safe">
+          {filteredNavItems.slice(0, 4).map((item) => (
             <Link
               key={item.path}
               to={item.path}
               className={cn(
-                "flex flex-col items-center justify-center gap-1 min-w-[64px] transition-colors",
+                "flex flex-col items-center justify-center gap-0.5 min-w-[50px] transition-colors",
                 location.pathname === item.path ? "text-primary font-medium" : "text-muted-foreground"
               )}
             >
-              <item.icon className={cn("h-5 w-5", location.pathname === item.path && "text-primary")} />
-              <span className="text-[10px] truncate max-w-[60px]">{t(item.nameKey)}</span>
+              <item.icon className={cn("h-4 w-4", location.pathname === item.path && "text-primary")} />
+              <span className="text-[9px] truncate max-w-[50px]">{t(item.nameKey as any)}</span>
             </Link>
           ))}
-          {/* More Menu for mobile if more than 5 items */}
-          {filteredNavItems.length > 5 && (
+          {/* More Menu for mobile if more than 4 items */}
+          {filteredNavItems.length > 4 && (
             <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
               <SheetTrigger render={
-                <button className="flex flex-col items-center justify-center gap-1 min-w-[64px] text-muted-foreground">
-                  <Menu className="h-5 w-5" />
-                  <span className="text-[10px]">More</span>
+                <button className="flex flex-col items-center justify-center gap-0.5 min-w-[50px] text-muted-foreground">
+                  <Menu className="h-4 w-4" />
+                  <span className="text-[9px]">More</span>
                 </button>
               } />
-              <SheetContent side="bottom" className="h-[40vh] rounded-t-2xl">
+              <SheetContent side="bottom" className="h-[50vh] rounded-t-2xl">
                 <ScrollArea className="h-full p-4">
                   <div className="grid grid-cols-3 gap-4">
-                    {filteredNavItems.slice(5).map((item) => (
+                    {filteredNavItems.slice(4).map((item) => (
                       <Link
                         key={item.path}
                         to={item.path}
@@ -252,7 +253,7 @@ export default function DashboardLayout() {
                         <div className="p-3 rounded-full bg-primary/10 text-primary">
                           <item.icon className="h-6 w-6" />
                         </div>
-                        <span className="text-xs text-center font-medium">{t(item.nameKey)}</span>
+                        <span className="text-xs text-center font-medium">{t(item.nameKey as any)}</span>
                       </Link>
                     ))}
                   </div>

@@ -59,8 +59,7 @@ export default function POS() {
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'BANK' | 'MOBILE'>('CASH');
 
   const filteredProducts = products?.filter(p => 
-    p.name.toLowerCase().includes(search.toLowerCase()) || 
-    p.barcode?.includes(search)
+    p.name.toLowerCase().includes(search.toLowerCase())
   );
 
   const addToCart = (product: Product) => {
@@ -213,7 +212,7 @@ export default function POS() {
       </div>
 
       {/* Cart Area */}
-      <Card className="w-full md:w-[350px] lg:w-[400px] flex flex-col h-full bg-card/50 shadow-lg border-primary/10 shrink-0 md:relative fixed inset-x-0 bottom-16 md:bottom-0 z-40 md:z-0 md:translate-y-0 transition-transform duration-300 md:rounded-xl rounded-t-2xl shadow-2xl md:shadow-lg h-[50vh] md:h-full">
+      <Card className="w-full md:w-[350px] lg:w-[400px] flex flex-col h-full bg-card/50 shadow-lg border-primary/10 shrink-0 md:relative fixed inset-x-0 bottom-16 md:bottom-0 z-40 md:z-0 md:translate-y-0 transition-transform duration-300 md:rounded-xl rounded-t-2xl shadow-2xl md:shadow-lg h-[40vh] md:h-full">
         <CardHeader className="py-2 px-4 border-b flex-row items-center justify-between md:py-3" onClick={() => {
           if (window.innerWidth < 768) {
             // This is a simple way to toggle the mobile height if needed, but for now let's make it a sensible fixed height
@@ -245,8 +244,13 @@ export default function POS() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-bold text-[10px] truncate leading-tight">{item.name}</p>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-bold text-primary">{formatCurrency(item.sellingPrice)}</span>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <Input 
+                          type="number" 
+                          className="h-5 w-14 text-[9px] px-1 bg-background" 
+                          value={item.sellingPrice}
+                          onChange={(e) => updatePrice(item.id!, parseFloat(e.target.value) || 0)}
+                        />
                         <div className="flex items-center gap-1 scale-75 origin-left">
                           <Button 
                             size="icon" 

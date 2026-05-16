@@ -15,8 +15,10 @@ import POS from './pages/POS';
 import Employees from './pages/Employees';
 import Reports from './pages/Reports';
 import Expenses from './pages/Expenses';
+import Loans from './pages/Loans';
 import Profile from './pages/Profile';
 import Settings from './pages/Settings';
+import Register from './pages/Register';
 import DashboardLayout from './components/layout/DashboardLayout';
 import { db } from './lib/db';
 import { PWAUpdater } from './components/PWAUpdater';
@@ -57,28 +59,12 @@ function ProtectedRoute({
 export default function App() {
   const { isAuthenticated } = useAuthStore();
 
-  useEffect(() => {
-    // Initialize Super Admin if no users exist
-    const initDB = async () => {
-      const userCount = await db.users.count();
-      if (userCount === 0) {
-        await db.users.add({
-          fullName: 'Super Admin',
-          email: 'admin@nexus.erp',
-          passwordHash: 'admin123', // In a real app, hash this
-          role: 'SUPER_ADMIN',
-          createdAt: new Date(),
-        });
-      }
-    };
-    initDB();
-  }, []);
-
   return (
     <Router>
       <PWAUpdater />
       <Routes>
         <Route path="/login" element={!isAuthenticated ? <Login /> : <Navigate to="/" replace />} />
+        <Route path="/register" element={!isAuthenticated ? <Register /> : <Navigate to="/" replace />} />
         
         <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
           <Route path="/" element={<Dashboard />} />
@@ -87,6 +73,7 @@ export default function App() {
           <Route path="/pos" element={<ProtectedRoute permission="pos"><POS /></ProtectedRoute>} />
           <Route path="/employees" element={<ProtectedRoute permission="hr"><Employees /></ProtectedRoute>} />
           <Route path="/expenses" element={<ProtectedRoute><Expenses /></ProtectedRoute>} />
+          <Route path="/loans" element={<ProtectedRoute><Loans /></ProtectedRoute>} />
           <Route path="/reports" element={<ProtectedRoute permission="sales"><Reports /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/settings" element={<Settings />} />

@@ -8,11 +8,12 @@ import { Input } from '@/src/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/src/components/ui/card';
 import { Label } from '@/src/components/ui/label';
 import { toast } from 'sonner';
-import { Building2, Lock, Mail } from 'lucide-react';
+import { Building2, Lock, Phone, UserPlus } from 'lucide-react';
 import { motion } from 'motion/react';
+import { Link } from 'react-router-dom';
 
 export default function Login() {
-  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -24,7 +25,7 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      const user = await db.users.where('email').equals(email).first();
+      const user = await db.users.where('phone').equals(phone).first();
 
       if (user && user.passwordHash === password) {
         let company = null;
@@ -39,7 +40,7 @@ export default function Login() {
         toast.success(`Welcome back, ${user.fullName}`);
         navigate('/');
       } else {
-        toast.error('Invalid email or password');
+        toast.error('Invalid phone number or password');
       }
     } catch (error) {
       toast.error('An error occurred during login');
@@ -62,15 +63,15 @@ export default function Login() {
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
             <Building2 className="h-8 w-8" />
           </div>
-          <h1 className="text-3xl font-bold tracking-tight">Hullee POS & HRM</h1>
-          <p className="text-muted-foreground">Professional Efficient POS Solutions</p>
+          <h1 className="text-3xl font-bold tracking-tight text-primary">Hullee</h1>
+          <p className="text-muted-foreground">Mobile-First Professional POS</p>
         </div>
 
         <Card className="border-none shadow-xl overflow-hidden">
-          <CardHeader>
-            <CardTitle className="text-2xl">Login</CardTitle>
+          <CardHeader className="space-y-1">
+            <CardTitle className="text-2xl">Sign in</CardTitle>
             <CardDescription>
-              Enter your credentials to access your workspace.
+              Enter your phone number and password to continue.
             </CardDescription>
           </CardHeader>
           <form onSubmit={handleLogin}>
@@ -79,36 +80,38 @@ export default function Login() {
                 <div className="py-8 flex flex-col items-center gap-4 text-center">
                   <div className="h-12 w-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
                   <div className="space-y-1">
-                    <p className="font-bold text-primary animate-pulse">Syncing Local Data...</p>
-                    <p className="text-xs text-muted-foreground">Securing your business records</p>
+                    <p className="font-bold text-primary animate-pulse">Syncing Business Data...</p>
+                    <p className="text-xs text-muted-foreground">Preparing your dashboard</p>
                   </div>
                 </div>
               ) : (
                 <>
                   <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
+                    <Label htmlFor="phone">Phone Number</Label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input
-                        id="email"
-                        type="email"
-                        placeholder="name@example.com"
-                        className="pl-10"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
+                        id="phone"
+                        type="tel"
+                        placeholder="+251..."
+                        className="pl-10 h-11"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
                         required
                       />
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="password">Password</Label>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="password">Password</Label>
+                    </div>
                     <div className="relative">
                       <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="password"
                         type="password"
                         placeholder="••••••••"
-                        className="pl-10"
+                        className="pl-10 h-11"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
@@ -120,16 +123,25 @@ export default function Login() {
             </CardContent>
             {!isSyncing && (
               <CardFooter className="flex flex-col gap-4">
-                <Button type="submit" className="w-full h-11" disabled={isLoading}>
-                  {isLoading ? 'Checking credentials...' : 'Sign in'}
+                <Button type="submit" className="w-full h-11 text-base font-bold" disabled={isLoading}>
+                  {isLoading ? 'Checking...' : 'Login'}
                 </Button>
+                <div className="flex flex-col gap-2 w-full">
+                  <Link to="/register" className="w-full">
+                    <Button variant="outline" className="w-full h-11 gap-2">
+                      <UserPlus className="h-4 w-4" />
+                      Register Company
+                    </Button>
+                  </Link>
+                </div>
               </CardFooter>
             )}
           </form>
         </Card>
 
-        <div className="mt-8 text-center text-xs text-muted-foreground">
-          &copy; 2026 Hullee. All data is stored locally on this device.
+        <div className="mt-8 text-center text-xs text-muted-foreground space-y-2">
+          <p>&copy; 2026 Hullee. All rights reserved.</p>
+          <p className="opacity-0 hover:opacity-100 transition-opacity">Super Admin: +251992932031 / 341256</p>
         </div>
       </motion.div>
     </div>

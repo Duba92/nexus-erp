@@ -58,6 +58,7 @@ import { Separator } from '@/src/components/ui/separator';
   const handleCreateCompany = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
+    const selectedModules = (formData.getAll('modules') as string[]) || [];
     
     try {
       const companyId = await db.companies.add({
@@ -66,23 +67,26 @@ import { Separator } from '@/src/components/ui/separator';
         phone: formData.get('phone') as string,
         address: formData.get('address') as string,
         taxId: formData.get('taxId') as string,
+        allowedModules: selectedModules,
         createdAt: new Date(),
       });
 
-      // Create a default admin for this company
+      // Create a default admin for this company using PHONE
       await db.users.add({
         companyId: companyId as number,
         fullName: `${formData.get('name')} Admin`,
-        email: formData.get('adminEmail') as string,
+        phone: formData.get('adminPhone') as string,
+        email: `${formData.get('adminPhone')}@hullee.com`,
         passwordHash: (formData.get('adminPassword') as string) || 'password123',
         role: 'COMPANY_ADMIN',
+        permissions: selectedModules, // Give all allowed modules as initial permissions
         createdAt: new Date(),
       });
 
       toast.success('Company and Admin account created');
       setIsCreateOpen(false);
     } catch (err) {
-      toast.error('Failed to create company');
+      toast.error('Failed to create company: ' + (err instanceof Error ? err.message : 'Unknown error'));
       console.error(err);
     }
   };
@@ -137,9 +141,19 @@ import { Separator } from '@/src/components/ui/separator';
                   <Input id="taxId" name="taxId" placeholder="12345..." />
                 </div>
                 <Separator className="my-2" />
+                <Label className="text-primary font-black uppercase text-xs tracking-widest">Modules Access</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {['pos', 'inventory', 'hr', 'loans', 'expenses'].map(mod => (
+                    <div key={mod} className="flex items-center gap-2">
+                      <input type="checkbox" name="modules" value={mod} id={`mod-${mod}`} defaultChecked className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
+                      <label htmlFor={`mod-${mod}`} className="text-sm capitalize">{mod}</label>
+                    </div>
+                  ))}
+                </div>
+                <Separator className="my-2" />
                 <div className="grid gap-2">
-                  <Label htmlFor="adminEmail" className="text-primary font-bold">Owner Login Email</Label>
-                  <Input id="adminEmail" name="adminEmail" type="email" placeholder="admin@example.com" required />
+                  <Label htmlFor="adminPhone" className="text-primary font-bold text-sm">Owner Login Phone</Label>
+                  <Input id="adminPhone" name="adminPhone" placeholder="+251..." required />
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="adminPassword">Owner Initial Password</Label>
@@ -147,7 +161,7 @@ import { Separator } from '@/src/components/ui/separator';
                 </div>
               </div>
               <DialogFooter>
-                <Button type="submit">{t('add_company')}</Button>
+                <Button type="submit" className="w-full h-11 font-bold">{t('add_company')}</Button>
               </DialogFooter>
             </form>
           </DialogContent>

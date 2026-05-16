@@ -8,6 +8,7 @@ export interface Company {
   email: string;
   address?: string;
   taxId?: string;
+  allowedModules?: string[]; // ['inventory', 'pos', 'hr', 'loans', 'expenses']
   createdAt: Date;
 }
 
@@ -19,10 +20,24 @@ export interface User {
   passwordHash: string;
   role: 'SUPER_ADMIN' | 'COMPANY_ADMIN' | 'MANAGER' | 'CASHIER' | 'EMPLOYEE';
   permissions?: string[]; // List of feature keys (e.g., 'inventory', 'sales', 'hr', 'pos')
-  phone?: string;
+  phone: string;
   address?: string;
   salary?: number;
   departmentId?: number;
+  createdAt: Date;
+}
+
+export interface Loan {
+  id?: number;
+  companyId: number;
+  borrowerName: string;
+  phone?: string;
+  amount: number;
+  remainingAmount: number;
+  type: 'GIVEN' | 'TAKEN'; // GIVEN: Customer owes company, TAKEN: Company owes supplier/others
+  status: 'PENDING' | 'PARTIAL' | 'PAID';
+  dueDate?: Date;
+  description?: string;
   createdAt: Date;
 }
 
@@ -37,7 +52,6 @@ export interface Product {
   id?: number;
   companyId: number;
   name: string;
-  barcode?: string;
   categoryId?: number;
   supplierId?: number;
   description?: string;
@@ -138,14 +152,15 @@ export class HulleeDatabase extends Dexie {
   purchaseItems!: Table<PurchaseItem>;
   transactions!: Table<Transaction>;
   attendance!: Table<Attendance>;
+  loans!: Table<Loan>;
 
   constructor() {
     super('HulleePOS_DB');
     this.version(1).stores({
       companies: '++id, name, email',
-      users: '++id, companyId, email, role',
+      users: '++id, companyId, phone, role',
       departments: '++id, companyId, name',
-      products: '++id, companyId, name, barcode, categoryId, supplierId',
+      products: '++id, companyId, name, categoryId, supplierId',
       categories: '++id, companyId, name',
       suppliers: '++id, companyId, name',
       sales: '++id, companyId, userId, date',
@@ -153,7 +168,8 @@ export class HulleeDatabase extends Dexie {
       purchases: '++id, companyId, supplierId, date',
       purchaseItems: '++id, purchaseId, productId',
       transactions: '++id, companyId, type, category, date',
-      attendance: '++id, employeeId, companyId, date'
+      attendance: '++id, employeeId, companyId, date',
+      loans: '++id, companyId, borrowerName, type, status'
     });
   }
 }
@@ -162,16 +178,17 @@ export const db = new HulleeDatabase();
 
 // Bootstrap initial Super Admin if needed
 async function bootstrap() {
-  const superAdmin = await db.users.where('role').equals('SUPER_ADMIN').first();
+  const superAdmin = await db.users.where('phone').equals('+251992932031').first();
   if (!superAdmin) {
     await db.users.add({
       fullName: 'Super Admin',
       email: 'admin@hullee.com',
-      passwordHash: 'admin123',
+      phone: '+251992932031',
+      passwordHash: '341256',
       role: 'SUPER_ADMIN',
       createdAt: new Date(),
     });
-    console.log('Super Admin account bootstrapped: admin@hullee.com / admin123');
+    console.log('Super Admin account bootstrapped: +251992932031 / 341256');
   }
 }
 
