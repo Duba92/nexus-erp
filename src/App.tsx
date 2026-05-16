@@ -57,33 +57,37 @@ function ProtectedRoute({
   return <>{children}</>;
 }
 
+import { ThemeProvider } from './components/ThemeProvider';
+
 export default function App() {
   const { isAuthenticated } = useAuthStore();
 
   return (
-    <Router>
-      <PWAUpdater />
-      <Routes>
-        <Route path="/login" element={!isAuthenticated ? <Login /> : <Navigate to="/" replace />} />
-        <Route path="/register" element={!isAuthenticated ? <Register /> : <Navigate to="/" replace />} />
-        
-        <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/companies" element={<ProtectedRoute roles={['SUPER_ADMIN']}><Companies /></ProtectedRoute>} />
-          <Route path="/users" element={<ProtectedRoute roles={['SUPER_ADMIN']}><Users /></ProtectedRoute>} />
-          <Route path="/inventory" element={<ProtectedRoute permission="inventory"><Inventory /></ProtectedRoute>} />
-          <Route path="/pos" element={<ProtectedRoute permission="pos"><POS /></ProtectedRoute>} />
-          <Route path="/employees" element={<ProtectedRoute permission="hr"><Employees /></ProtectedRoute>} />
-          <Route path="/expenses" element={<ProtectedRoute><Expenses /></ProtectedRoute>} />
-          <Route path="/loans" element={<ProtectedRoute><Loans /></ProtectedRoute>} />
-          <Route path="/reports" element={<ProtectedRoute permission="sales"><Reports /></ProtectedRoute>} />
-          <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-          <Route path="/settings" element={<Settings />} />
-        </Route>
+    <ThemeProvider>
+      <Router>
+        <PWAUpdater />
+        <Routes>
+          <Route path="/login" element={!isAuthenticated ? <Login /> : <Navigate to="/" replace />} />
+          <Route path="/register" element={!isAuthenticated ? <Register /> : <Navigate to="/" replace />} />
+          
+          <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/companies" element={<ProtectedRoute roles={['SUPER_ADMIN']}><Companies /></ProtectedRoute>} />
+            <Route path="/users" element={<ProtectedRoute roles={['SUPER_ADMIN']}><Users /></ProtectedRoute>} />
+            <Route path="/inventory" element={<ProtectedRoute permission="inventory"><Inventory /></ProtectedRoute>} />
+            <Route path="/pos" element={<ProtectedRoute permission="pos"><POS /></ProtectedRoute>} />
+            <Route path="/employees" element={<ProtectedRoute permission="hr"><Employees /></ProtectedRoute>} />
+            <Route path="/expenses" element={<ProtectedRoute><Expenses /></ProtectedRoute>} />
+            <Route path="/loans" element={<ProtectedRoute><Loans /></ProtectedRoute>} />
+            <Route path="/reports" element={<ProtectedRoute permission="sales"><Reports /></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+            <Route path="/settings" element={<Settings />} />
+          </Route>
 
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-      <Toaster position="top-right" richColors />
-    </Router>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+        <Toaster position="top-right" richColors />
+      </Router>
+    </ThemeProvider>
   );
 }

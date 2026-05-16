@@ -137,4 +137,38 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
+  /* Compact Mode Styles */
+  .compact {
+    --table-padding-y: 0.5rem;
+    --table-padding-x: 0.75rem;
+  }
+
+  .compact td,
+  .compact th {
+    @apply py-2 px-3;
+  }
+
+  .compact .card-header {
+    @apply p-4;
+  }
+
+  .compact .card-content {
+    @apply p-4;
+  }
+
+  /* Accent Color Themes */
+  :root, .dark {
+    &.theme-indigo { --primary: oklch(0.511 0.262 276.966); --primary-foreground: oklch(0.985 0 0); }
+    &.theme-blue { --primary: oklch(0.546 0.245 262.881); --primary-foreground: oklch(0.985 0 0); }
+    &.theme-emerald { --primary: oklch(0.537 0.215 158.4); --primary-foreground: oklch(0.985 0 0); }
+    &.theme-rose { --primary: oklch(0.577 0.245 27.325); --primary-foreground: oklch(0.985 0 0); }
+    &.theme-amber { --primary: oklch(0.769 0.188 70.08); --primary-foreground: oklch(0.145 0 0); }
+    &.theme-slate { --primary: oklch(0.208 0.042 265.755); --primary-foreground: oklch(0.985 0 0); }
+  }
+
+  /* Specific adjustment for dark mode to ensure primary-foreground contrast if needed */
+  .dark {
+    &.theme-amber { --primary-foreground: oklch(0.145 0 0); }
+  }
 }

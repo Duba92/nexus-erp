@@ -37,10 +37,14 @@ import { useTranslation } from '@/src/lib/i18n';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/src/components/ui/tabs';
 
 import { useLanguageStore } from '@/src/store/useLanguageStore';
+import { useThemeStore } from '@/src/store/useThemeStore';
+import { Sun, Moon, Monitor, Check } from 'lucide-react';
+import { Switch } from '@/src/components/ui/switch';
 
 export default function Settings() {
   const { currentCompany, currentUser, updateUser } = useAuthStore();
   const { language, setLanguage } = useLanguageStore();
+  const { theme, setTheme, accentColor, setAccentColor } = useThemeStore();
   const { t } = useTranslation();
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [passwordData, setPasswordData] = useState({ current: '', new: '', confirm: '' });
@@ -350,21 +354,96 @@ export default function Settings() {
               <CardDescription>Customize the look and feel of your application.</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-4 py-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Dark Mode</p>
-                    <p className="text-xs text-muted-foreground">Switch between light and dark themes.</p>
+              <div className="grid gap-6">
+                <div className="space-y-3">
+                  <Label>Theme Mode</Label>
+                  <div className="grid grid-cols-3 gap-3">
+                    <Button
+                      variant={theme === 'light' ? 'default' : 'outline'}
+                      className={cn(
+                        "flex flex-col items-center justify-center h-20 gap-2 border-2",
+                        theme === 'light' ? "border-primary" : "border-transparent"
+                      )}
+                      onClick={() => setTheme('light')}
+                    >
+                      <Sun className="h-5 w-5" />
+                      <span className="text-xs">Light</span>
+                    </Button>
+                    <Button
+                      variant={theme === 'dark' ? 'default' : 'outline'}
+                      className={cn(
+                        "flex flex-col items-center justify-center h-20 gap-2 border-2",
+                        theme === 'dark' ? "border-primary" : "border-transparent"
+                      )}
+                      onClick={() => setTheme('dark')}
+                    >
+                      <Moon className="h-5 w-5" />
+                      <span className="text-xs">Dark</span>
+                    </Button>
+                    <Button
+                      variant={theme === 'system' ? 'default' : 'outline'}
+                      className={cn(
+                        "flex flex-col items-center justify-center h-20 gap-2 border-2",
+                        theme === 'system' ? "border-primary" : "border-transparent"
+                      )}
+                      onClick={() => setTheme('system')}
+                    >
+                      <Monitor className="h-5 w-5" />
+                      <span className="text-xs">System</span>
+                    </Button>
                   </div>
-                  <Button variant="outline" size="sm" disabled>Coming Soon</Button>
                 </div>
+
+                <div className="space-y-3">
+                  <Label>Accent Color</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { name: 'Indigo', value: 'indigo', class: 'bg-indigo-600' },
+                      { name: 'Blue', value: 'blue', class: 'bg-blue-600' },
+                      { name: 'Emerald', value: 'emerald', class: 'bg-emerald-600' },
+                      { name: 'Rose', value: 'rose', class: 'bg-rose-600' },
+                      { name: 'Amber', value: 'amber', class: 'bg-amber-600' },
+                      { name: 'Slate', value: 'slate', class: 'bg-slate-800' },
+                    ].map((color) => (
+                      <button
+                        key={color.value}
+                        onClick={() => setAccentColor(color.value)}
+                        className={cn(
+                          "h-10 w-10 rounded-full flex items-center justify-center transition-all border-2",
+                          accentColor === color.value ? "border-primary scale-110" : "border-transparent"
+                        )}
+                        title={color.name}
+                      >
+                        <div className={cn("h-7 w-7 rounded-full", color.class)} />
+                        {accentColor === color.value && (
+                          <div className="absolute inset-0 flex items-center justify-center text-white">
+                            <Check className="h-4 w-4" />
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <Separator />
+
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium">Compact Table View</p>
-                    <p className="text-xs text-muted-foreground">Show more rows in data tables.</p>
+                    <Label className="text-base font-medium">Compact Table View</Label>
+                    <p className="text-xs text-muted-foreground">Show more rows in data tables by reducing padding.</p>
                   </div>
-                  <Button variant="outline" size="sm" disabled>Coming Soon</Button>
+                  <Switch 
+                    id="compact-mode"
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        document.documentElement.classList.add('compact');
+                      } else {
+                        document.documentElement.classList.remove('compact');
+                      }
+                      localStorage.setItem('hullee-compact-mode', checked ? 'true' : 'false');
+                    }}
+                    defaultChecked={localStorage.getItem('hullee-compact-mode') === 'true'}
+                  />
                 </div>
               </div>
             </CardContent>
