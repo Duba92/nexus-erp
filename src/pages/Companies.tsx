@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { db, type Company } from '@/src/lib/db';
 import { useAuthStore } from '@/src/store/useAuthStore';
+import { normalizePhone } from '@/src/lib/firebase';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
   Card,
@@ -40,6 +41,8 @@ import { ScrollArea } from '@/src/components/ui/scroll-area';
   const { currentUser } = useAuthStore();
   const companies = useLiveQuery(() => db.companies.toArray());
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editingCompany, setEditingCompany] = useState<Company | null>(null);
   const [search, setSearch] = useState('');
 
   if (currentUser?.role !== 'SUPER_ADMIN') {
@@ -62,6 +65,9 @@ import { ScrollArea } from '@/src/components/ui/scroll-area';
     const selectedModules = (formData.getAll('modules') as string[]) || [];
     
     try {
+      const adminPhone = formData.get('adminPhone') as string;
+      const normalizedAdminPhone = normalizePhone(adminPhone);
+
       const companyId = await db.companies.add({
         name: formData.get('name') as string,
         email: formData.get('email') as string,
@@ -76,8 +82,8 @@ import { ScrollArea } from '@/src/components/ui/scroll-area';
       await db.users.add({
         companyId: companyId as number,
         fullName: `${formData.get('name')} Admin`,
-        phone: formData.get('adminPhone') as string,
-        email: `${formData.get('adminPhone')}@hullee.com`,
+        phone: normalizedAdminPhone,
+        email: `${normalizedAdminPhone}@hullee.com`,
         passwordHash: (formData.get('adminPassword') as string) || 'password123',
         role: 'COMPANY_ADMIN',
         permissions: selectedModules, // Give all allowed modules as initial permissions
@@ -88,6 +94,31 @@ import { ScrollArea } from '@/src/components/ui/scroll-area';
       setIsCreateOpen(false);
     } catch (err) {
       toast.error('Failed to create company: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      console.error(err);
+    }
+  };
+
+  const handleUpdateCompany = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!editingCompany) return;
+    const formData = new FormData(e.currentTarget);
+    const selectedModules = (formData.getAll('modules') as string[]) || [];
+    
+    try {
+      await db.companies.update(editingCompany.id!, {
+        name: formData.get('name') as string,
+        email: formData.get('email') as string,
+        phone: formData.get('phone') as string,
+        address: formData.get('address') as string,
+        taxId: formData.get('taxId') as string,
+        allowedModules: selectedModules,
+      });
+
+      toast.success('Company updated successfully');
+      setIsEditOpen(false);
+      setEditingCompany(null);
+    } catch (err) {
+      toast.error('Failed to update company');
       console.error(err);
     }
   };
@@ -214,7 +245,14 @@ import { ScrollArea } from '@/src/components/ui/scroll-area';
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="icon">
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        onClick={() => {
+                          setEditingCompany(company);
+                          setIsEditOpen(true);
+                        }}
+                      >
                         <Pencil className="h-4 w-4" />
                       </Button>
                       <Button 
@@ -239,6 +277,63 @@ import { ScrollArea } from '@/src/components/ui/scroll-area';
           </Table>
         </CardContent>
       </Card>
+
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent className="sm:max-w-[500px] max-h-[95vh] overflow-y-auto">
+          {editingCompany && (
+            <form onSubmit={handleUpdateCompany} className="space-y-6">
+              <DialogHeader>
+                <DialogTitle>Edit Company</DialogTitle>
+                <DialogDescription>
+                  Update company details and module access.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-name">{t('name')}</Label>
+                  <Input id="edit-name" name="name" defaultValue={editingCompany.name} required />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-email">{t('email')}</Label>
+                  <Input id="edit-email" name="email" type="email" defaultValue={editingCompany.email} required />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-phone">{t('phone')}</Label>
+                  <Input id="edit-phone" name="phone" defaultValue={editingCompany.phone} placeholder="+251 ..." />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-address">Address</Label>
+                  <Input id="edit-address" name="address" defaultValue={editingCompany.address} placeholder="Addis Ababa, ..." />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-taxId">Tax ID / VAT</Label>
+                  <Input id="edit-taxId" name="taxId" defaultValue={editingCompany.taxId} placeholder="12345..." />
+                </div>
+                <Separator className="my-2" />
+                <Label className="text-primary font-black uppercase text-xs tracking-widest">Modules Access</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {['pos', 'inventory', 'hr', 'loans', 'expenses'].map(mod => (
+                    <div key={mod} className="flex items-center gap-2">
+                      <input 
+                        type="checkbox" 
+                        name="modules" 
+                        value={mod} 
+                        id={`edit-mod-${mod}`} 
+                        defaultChecked={editingCompany.allowedModules?.includes(mod)} 
+                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" 
+                      />
+                      <label htmlFor={`edit-mod-${mod}`} className="text-sm capitalize">{mod}</label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <DialogFooter className="pt-4 border-t sticky bottom-0 bg-background pb-2">
+                <Button type="submit" className="w-full h-11 font-bold">Update Company</Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

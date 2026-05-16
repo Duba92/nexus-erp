@@ -178,17 +178,18 @@ export const db = new HulleeDatabase();
 
 // Bootstrap initial Super Admin if needed
 async function bootstrap() {
-  const superAdmin = await db.users.where('phone').equals('+251992932031').first();
+  const superAdminPhone = '251992932031';
+  const superAdmin = await db.users.where('phone').equals(superAdminPhone).first();
   if (!superAdmin) {
     await db.users.add({
       fullName: 'Super Admin',
       email: 'admin@hullee.com',
-      phone: '+251992932031',
+      phone: superAdminPhone,
       passwordHash: '341256',
       role: 'SUPER_ADMIN',
       createdAt: new Date(),
     });
-    console.log('Super Admin account bootstrapped: +251992932031 / 341256');
+    console.log('Super Admin account bootstrapped: 251992932031 / 341256');
   }
 }
 

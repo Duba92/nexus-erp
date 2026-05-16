@@ -58,6 +58,8 @@ export default function Inventory() {
   const allCompanies = useLiveQuery(() => db.companies.toArray());
 
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [search, setSearch] = useState('');
 
   const filteredProducts = products?.filter(p => 
@@ -105,6 +107,40 @@ export default function Inventory() {
       } else {
         toast.error('Failed to add product: ' + (err instanceof Error ? err.message : 'Unknown error'));
       }
+    }
+  };
+
+  const handleUpdateProduct = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!editingProduct) return;
+
+    const formData = new FormData(e.currentTarget);
+    const name = formData.get('name') as string;
+    const quantity = parseInt(formData.get('quantity') as string) || 0;
+    const lowStockThreshold = parseInt(formData.get('lowStockThreshold') as string) || 5;
+    const costPrice = parseFloat(formData.get('costPrice') as string) || 0;
+    const unit = (formData.get('unit') as string) || 'pcs';
+
+    if (!name) {
+      toast.error('Product name is required');
+      return;
+    }
+
+    try {
+      await db.products.update(editingProduct.id!, {
+        name,
+        quantity,
+        lowStockThreshold,
+        costPrice,
+        unit,
+      });
+
+      toast.success('Product updated successfully');
+      setIsEditOpen(false);
+      setEditingProduct(null);
+    } catch (err) {
+      console.error('Error updating product:', err);
+      toast.error('Failed to update product');
     }
   };
 
@@ -268,7 +304,14 @@ export default function Inventory() {
                         <TableCell>{formatCurrency(p.costPrice)}</TableCell>
                         <TableCell className="font-medium">{formatCurrency(rowValuation)}</TableCell>
                         <TableCell className="text-right">
-                          <Button variant="ghost" size="icon">
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            onClick={() => {
+                              setEditingProduct(p);
+                              setIsEditOpen(true);
+                            }}
+                          >
                             <Pencil className="h-4 w-4" />
                           </Button>
                           <Button 
@@ -306,6 +349,46 @@ export default function Inventory() {
           </Table>
         </CardContent>
       </Card>
+
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent className="sm:max-w-[525px]">
+          {editingProduct && (
+            <form onSubmit={handleUpdateProduct}>
+              <DialogHeader>
+                <DialogTitle>Edit Product</DialogTitle>
+                <DialogDescription>
+                  Update product details in your inventory.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4 sm:grid-cols-2">
+                <div className="grid gap-2 sm:col-span-2">
+                  <Label htmlFor="edit-name">{t('name')}</Label>
+                  <Input id="edit-name" name="name" defaultValue={editingProduct.name} required />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-unit">Unit (e.g., pcs, kg, box)</Label>
+                  <Input id="edit-unit" name="unit" defaultValue={editingProduct.unit} />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-quantity">Quantity</Label>
+                  <Input id="edit-quantity" name="quantity" type="number" defaultValue={editingProduct.quantity} required />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-lowStockThreshold">Low Stock Alert Level</Label>
+                  <Input id="edit-lowStockThreshold" name="lowStockThreshold" type="number" defaultValue={editingProduct.lowStockThreshold} required />
+                </div>
+                <div className="grid gap-2 sm:col-span-2">
+                  <Label htmlFor="edit-costPrice">Cost Price (ETB)</Label>
+                  <Input id="edit-costPrice" name="costPrice" type="number" step="0.01" defaultValue={editingProduct.costPrice} required />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button type="submit">Update Product</Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { db, type User, type Department } from '@/src/lib/db';
 import { useAuthStore } from '@/src/store/useAuthStore';
+import { normalizePhone } from '@/src/lib/firebase';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { cn } from '@/src/lib/utils';
 import {
@@ -68,6 +69,8 @@ export default function Employees() {
   const allCompanies = useLiveQuery(() => db.companies.toArray());
 
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState<User | null>(null);
   const [isDeptOpen, setIsDeptOpen] = useState(false);
   const [search, setSearch] = useState('');
 
@@ -103,6 +106,8 @@ export default function Employees() {
     
     try {
       const role = formData.get('role') as any || 'EMPLOYEE';
+      const phone = formData.get('phone') as string;
+      const normalizedPhone = normalizePhone(phone);
       
       await db.users.add({
         companyId: currentCompany.id!,
@@ -111,7 +116,7 @@ export default function Employees() {
         passwordHash: formData.get('password') as string || 'employee123',
         role: role,
         permissions: selectedPermissions,
-        phone: formData.get('phone') as string,
+        phone: normalizedPhone,
         salary: parseFloat(formData.get('salary') as string),
         departmentId: parseInt(formData.get('departmentId') as string),
         createdAt: new Date(),
@@ -122,6 +127,36 @@ export default function Employees() {
       setIsAddOpen(false);
     } catch (err) {
       toast.error('Failed to register employee');
+    }
+  };
+
+  const handleUpdateEmployee = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!editingEmployee || !currentCompany) return;
+
+    const formData = new FormData(e.currentTarget);
+    
+    try {
+      const role = formData.get('role') as any || 'EMPLOYEE';
+      const phone = formData.get('phone') as string;
+      const normalizedPhone = normalizePhone(phone);
+      
+      await db.users.update(editingEmployee.id!, {
+        fullName: formData.get('fullName') as string,
+        email: formData.get('email') as string,
+        role: role,
+        permissions: selectedPermissions,
+        phone: normalizedPhone,
+        salary: parseFloat(formData.get('salary') as string),
+        departmentId: parseInt(formData.get('departmentId') as string),
+      });
+
+      toast.success('Employee updated successfully');
+      setIsEditOpen(false);
+      setEditingEmployee(null);
+      setSelectedPermissions(['pos']);
+    } catch (err) {
+      toast.error('Failed to update employee');
     }
   };
 
@@ -332,7 +367,15 @@ export default function Employees() {
                           {e.createdAt ? new Intl.DateTimeFormat('en-US').format(e.createdAt) : '-'}
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button variant="ghost" size="icon">
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            onClick={() => {
+                              setEditingEmployee(e);
+                              setSelectedPermissions(e.permissions || []);
+                              setIsEditOpen(true);
+                            }}
+                          >
                             <Pencil className="h-4 w-4" />
                           </Button>
                           <Button 
@@ -421,6 +464,92 @@ export default function Employees() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent className="sm:max-w-[525px]">
+          {editingEmployee && (
+            <form onSubmit={handleUpdateEmployee}>
+              <DialogHeader>
+                <DialogTitle>Edit Employee</DialogTitle>
+                <DialogDescription>
+                  Update professional details and permissions for this staff member.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4 sm:grid-cols-2">
+                <div className="grid gap-2 sm:col-span-2">
+                  <Label htmlFor="edit-fullName">{t('name')}</Label>
+                  <Input id="edit-fullName" name="fullName" defaultValue={editingEmployee.fullName} required />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-email">{t('email')}</Label>
+                  <Input id="edit-email" name="email" type="email" defaultValue={editingEmployee.email} required />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-phone">{t('phone')}</Label>
+                  <Input id="edit-phone" name="phone" defaultValue={editingEmployee.phone} />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-role">{t('role')}</Label>
+                  <Select name="role" defaultValue={editingEmployee.role}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="MANAGER">Manager</SelectItem>
+                      <SelectItem value="CASHIER">Cashier</SelectItem>
+                      <SelectItem value="EMPLOYEE">Staff/Employee</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-departmentId">Department</Label>
+                  <Select name="departmentId" defaultValue={editingEmployee.departmentId?.toString()}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select dept" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {departments?.map(d => (
+                        <SelectItem key={d.id} value={d.id!.toString()}>{d.name}</SelectItem>
+                      ))}
+                      {!departments?.length && <SelectItem value="0" disabled>No departments defined</SelectItem>}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-salary">Base Salary (ETB)</Label>
+                  <Input id="edit-salary" name="salary" type="number" defaultValue={editingEmployee.salary} />
+                </div>
+                <div className="grid gap-2 sm:col-span-2">
+                  <Label>Feature Access Permissions</Label>
+                  <div className="grid grid-cols-2 gap-2 p-3 border rounded-md">
+                    {['inventory', 'pos', 'hr', 'sales'].map((perm) => (
+                      <div key={perm} className="flex items-center space-x-2">
+                        <input 
+                          type="checkbox" 
+                          id={`edit-perm-${perm}`}
+                          checked={selectedPermissions.includes(perm)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedPermissions([...selectedPermissions, perm]);
+                            } else {
+                              setSelectedPermissions(selectedPermissions.filter(p => p !== perm));
+                            }
+                          }}
+                          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                        />
+                        <Label htmlFor={`edit-perm-${perm}`} className="text-xs capitalize">{perm}</Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button type="submit">Update Employee</Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

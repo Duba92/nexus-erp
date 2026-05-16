@@ -7,8 +7,12 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const firestore = getFirestore(app);
 
+export const normalizePhone = (phone: string) => {
+  // Remove all non-digits
+  return phone.replace(/\D/g, '');
+};
+
 export const formatPhoneToEmail = (phone: string) => {
-  // Remove any non-alphanumeric characters and append dummy domain
-  const cleanPhone = phone.replace(/[^a-zA-Z0-9]/g, '');
+  const cleanPhone = normalizePhone(phone);
   return `${cleanPhone}@hullee.local`;
 };

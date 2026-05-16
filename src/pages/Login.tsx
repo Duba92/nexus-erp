@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '@/src/lib/db';
-import { auth, formatPhoneToEmail } from '@/src/lib/firebase';
+import { auth, formatPhoneToEmail, normalizePhone } from '@/src/lib/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { useAuthStore } from '@/src/store/useAuthStore';
 import { cn } from '@/src/lib/utils';
@@ -26,8 +26,9 @@ export default function Login() {
     setIsLoading(true);
 
     try {
+      const normalizedPhone = normalizePhone(phone);
       // 1. Firebase Auth Sign In
-      const firebaseEmail = formatPhoneToEmail(phone);
+      const firebaseEmail = formatPhoneToEmail(normalizedPhone);
       try {
         await signInWithEmailAndPassword(auth, firebaseEmail, password);
       } catch (fError) {
@@ -37,7 +38,7 @@ export default function Login() {
       }
 
       // 2. Local DB Check
-      const user = await db.users.where('phone').equals(phone).first();
+      const user = await db.users.where('phone').equals(normalizedPhone).first();
 
       if (user && user.passwordHash === password) {
         let company = null;

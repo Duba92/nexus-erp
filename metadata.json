@@ -1,6 +1,8 @@
 {
-  "name": "Hullee",
-  "description": "Professional offline-first PWA ERP system for multi-company management, inventory, POS, and HR.",
+  "name": "Hullee POS",
+  "description": "Secure & Reliable POS and Management System for companies and employees.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API", "OFFLINE_STORAGE", "MULTI_COMPANY", "POS", "INVENTORY"]
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

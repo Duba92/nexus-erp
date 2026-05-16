@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { db } from '@/src/lib/db';
-import { auth, formatPhoneToEmail } from '@/src/lib/firebase';
+import { auth, formatPhoneToEmail, normalizePhone } from '@/src/lib/firebase';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { Button } from '@/src/components/ui/button';
 import { Input } from '@/src/components/ui/input';
@@ -39,8 +39,9 @@ export default function Register() {
     setIsLoading(true);
 
     try {
+      const normalizedPhone = normalizePhone(formData.phone);
       // 1. Firebase Auth Registration
-      const firebaseEmail = formatPhoneToEmail(formData.phone);
+      const firebaseEmail = formatPhoneToEmail(normalizedPhone);
       const userCredential = await createUserWithEmailAndPassword(auth, firebaseEmail, formData.password);
       await updateProfile(userCredential.user, { displayName: formData.fullName });
 
@@ -57,8 +58,8 @@ export default function Register() {
         await db.users.add({
           companyId,
           fullName: formData.fullName,
-          phone: formData.phone,
-          email: `${formData.phone}@hullee.com`, // Dummy email for legacy compatibility
+          phone: normalizedPhone,
+          email: `${normalizedPhone}@hullee.com`, // Dummy email for legacy compatibility
           passwordHash: formData.password,
           role: 'COMPANY_ADMIN',
           permissions: ['pos', 'inventory', 'hr', 'sales'],
