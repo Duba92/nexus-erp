@@ -183,7 +183,7 @@ export default function POS() {
         </div>
         
         <ScrollArea className="flex-1">
-          <div className="grid grid-cols-2 gap-3 pb-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          <div className="grid grid-cols-2 gap-3 pb-40 md:pb-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {filteredProducts?.map((product) => (
               <Card 
                 key={product.id} 

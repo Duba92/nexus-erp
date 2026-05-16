@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { db } from '@/src/lib/db';
+import { auth, formatPhoneToEmail } from '@/src/lib/firebase';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { Button } from '@/src/components/ui/button';
 import { Input } from '@/src/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/src/components/ui/card';
 import { Label } from '@/src/components/ui/label';
 import { toast } from 'sonner';
-import { Building2, Lock, Phone, User, CheckCircle2 } from 'lucide-react';
+import { Building2, Lock, Phone, User, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { motion } from 'motion/react';
+import { ScrollArea } from '@/src/components/ui/scroll-area';
 
 export default function Register() {
   const [formData, setFormData] = useState({
@@ -36,13 +39,12 @@ export default function Register() {
     setIsLoading(true);
 
     try {
-      // Check if phone already registered
-      const existingUser = await db.users.where('phone').equals(formData.phone).first();
-      if (existingUser) {
-        toast.error('This phone number is already registered');
-        return;
-      }
+      // 1. Firebase Auth Registration
+      const firebaseEmail = formatPhoneToEmail(formData.phone);
+      const userCredential = await createUserWithEmailAndPassword(auth, firebaseEmail, formData.password);
+      await updateProfile(userCredential.user, { displayName: formData.fullName });
 
+      // 2. Local DB Sync
       await db.transaction('rw', [db.companies, db.users], async () => {
         // 1. Create Company
         const companyId = await db.companies.add({
@@ -98,87 +100,89 @@ export default function Register() {
             </CardDescription>
           </CardHeader>
           <form onSubmit={handleRegister}>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="fullName">Full Name</Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="fullName"
-                    placeholder="John Doe"
-                    className="pl-10 h-11"
-                    value={formData.fullName}
-                    onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                    required
-                  />
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone Number</Label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="phone"
-                    type="tel"
-                    placeholder="+251..."
-                    className="pl-10 h-11"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="companyName">Company Name</Label>
-                <div className="relative">
-                  <Building2 className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="companyName"
-                    placeholder="My Business"
-                    className="pl-10 h-11"
-                    value={formData.companyName}
-                    onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
+            <ScrollArea className="max-h-[60vh] px-1">
+              <CardContent className="space-y-4 pt-1">
                 <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
+                  <Label htmlFor="fullName">Full Name</Label>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
-                      id="password"
-                      type="password"
-                      placeholder="••••••••"
+                      id="fullName"
+                      placeholder="John Doe"
                       className="pl-10 h-11"
-                      value={formData.password}
-                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      value={formData.fullName}
+                      onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
                       required
                     />
                   </div>
                 </div>
+                
                 <div className="space-y-2">
-                  <Label htmlFor="confirmPassword">Confirm</Label>
+                  <Label htmlFor="phone">Phone Number</Label>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
-                      id="confirmPassword"
-                      type="password"
-                      placeholder="••••••••"
+                      id="phone"
+                      type="tel"
+                      placeholder="+251..."
                       className="pl-10 h-11"
-                      value={formData.confirmPassword}
-                      onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                       required
                     />
                   </div>
                 </div>
-              </div>
-            </CardContent>
-            <CardFooter className="flex flex-col gap-4">
+
+                <div className="space-y-2">
+                  <Label htmlFor="companyName">Company Name</Label>
+                  <div className="relative">
+                    <Building2 className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="companyName"
+                      placeholder="My Business"
+                      className="pl-10 h-11"
+                      value={formData.companyName}
+                      onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Password</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="password"
+                        type="password"
+                        placeholder="••••••••"
+                        className="pl-10 h-11"
+                        value={formData.password}
+                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPassword">Confirm</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="confirmPassword"
+                        type="password"
+                        placeholder="••••••••"
+                        className="pl-10 h-11"
+                        value={formData.confirmPassword}
+                        onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </ScrollArea>
+            <CardFooter className="flex flex-col gap-4 border-t pt-6 pb-6">
               <Button type="submit" className="w-full h-11 text-base font-bold" disabled={isLoading}>
                 {isLoading ? 'Creating Account...' : 'Register'}
               </Button>

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '@/src/lib/db';
+import { auth, formatPhoneToEmail } from '@/src/lib/firebase';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 import { useAuthStore } from '@/src/store/useAuthStore';
 import { cn } from '@/src/lib/utils';
 import { Button } from '@/src/components/ui/button';
@@ -25,6 +27,17 @@ export default function Login() {
     setIsLoading(true);
 
     try {
+      // 1. Firebase Auth Sign In
+      const firebaseEmail = formatPhoneToEmail(phone);
+      try {
+        await signInWithEmailAndPassword(auth, firebaseEmail, password);
+      } catch (fError) {
+        // Fallback for bootstrap users like Super Admin if they aren't in Firebase yet
+        // In a real app, you'd migrate them or ensure they exist in Firebase
+        console.warn('Firebase login failed, checking local DB', fError);
+      }
+
+      // 2. Local DB Check
       const user = await db.users.where('phone').equals(phone).first();
 
       if (user && user.passwordHash === password) {

@@ -228,7 +228,7 @@ export default function Inventory() {
                 {currentUser?.role === 'SUPER_ADMIN' && <TableHead>Company</TableHead>}
                 <TableHead>Stock Status</TableHead>
                 <TableHead>Cost Price</TableHead>
-                <TableHead>Valuation (Cost)</TableHead>
+                <TableHead>Now Balance</TableHead>
                 <TableHead className="text-right">{t('actions')}</TableHead>
               </TableRow>
             </TableHeader>

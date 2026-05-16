@@ -37,6 +37,7 @@ import { useEffect } from 'react';
 const navItems: { nameKey: string; path: string; icon: any; roles?: string[] }[] = [
   { nameKey: 'dashboard', path: '/', icon: LayoutDashboard },
   { nameKey: 'companies', path: '/companies', icon: Building2, roles: ['SUPER_ADMIN'] },
+  { nameKey: 'users', path: '/users', icon: User, roles: ['SUPER_ADMIN'] },
   { nameKey: 'pos', path: '/pos', icon: ShoppingCart },
   { nameKey: 'inventory', path: '/inventory', icon: Package },
   { nameKey: 'loans', path: '/loans', icon: FileText },
@@ -81,10 +82,27 @@ export default function DashboardLayout() {
       return false;
     }
 
-    // Super admin sees everything allowed by their role (which is everything)
+    // Check company allowed modules
+    const moduleMap: Record<string, string> = {
+      '/pos': 'pos',
+      '/inventory': 'inventory',
+      '/employees': 'hr',
+      '/loans': 'loans',
+      '/expenses': 'expenses',
+    };
+
+    const moduleKey = moduleMap[item.path];
+    if (moduleKey && currentCompany && currentCompany.allowedModules && !currentCompany.allowedModules.includes(moduleKey)) {
+      // Super admin is exempt from module restrictions
+      if (currentUser.role !== 'SUPER_ADMIN') {
+        return false;
+      }
+    }
+
+    // Super admin sees everything allowed by their role
     if (currentUser.role === 'SUPER_ADMIN') return true;
     
-    // Company admin sees everything else (pos, inventory, etc)
+    // Company admin sees everything allowed for their company
     if (currentUser.role === 'COMPANY_ADMIN') return true;
     
     // Managers/Employees check permissions
@@ -93,6 +111,8 @@ export default function DashboardLayout() {
       '/pos': 'pos',
       '/employees': 'hr',
       '/reports': 'sales',
+      '/loans': 'loans',
+      '/expenses': 'expenses',
     };
     
     const featureKey = featureMap[item.path];

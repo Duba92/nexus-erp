@@ -19,6 +19,7 @@ import Loans from './pages/Loans';
 import Profile from './pages/Profile';
 import Settings from './pages/Settings';
 import Register from './pages/Register';
+import Users from './pages/Users';
 import DashboardLayout from './components/layout/DashboardLayout';
 import { db } from './lib/db';
 import { PWAUpdater } from './components/PWAUpdater';
@@ -69,6 +70,7 @@ export default function App() {
         <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
           <Route path="/" element={<Dashboard />} />
           <Route path="/companies" element={<ProtectedRoute roles={['SUPER_ADMIN']}><Companies /></ProtectedRoute>} />
+          <Route path="/users" element={<ProtectedRoute roles={['SUPER_ADMIN']}><Users /></ProtectedRoute>} />
           <Route path="/inventory" element={<ProtectedRoute permission="inventory"><Inventory /></ProtectedRoute>} />
           <Route path="/pos" element={<ProtectedRoute permission="pos"><POS /></ProtectedRoute>} />
           <Route path="/employees" element={<ProtectedRoute permission="hr"><Employees /></ProtectedRoute>} />
