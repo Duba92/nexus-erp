@@ -77,13 +77,13 @@ export default function Register() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/50 p-4 overflow-y-auto">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="w-full max-w-md py-8"
-      >
+    <div className="min-h-screen bg-muted/50 py-8 px-4 sm:px-8">
+      <div className="max-w-md mx-auto w-full">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
         <div className="mb-6 flex flex-col items-center justify-center gap-2 text-center">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
             <Building2 className="h-8 w-8" />
@@ -197,7 +197,8 @@ export default function Register() {
         <div className="mt-8 text-center text-xs text-muted-foreground">
           &copy; 2026 Hullee. Secure & Reliable POS.
         </div>
-      </motion.div>
+        </motion.div>
+      </div>
     </div>
   );
 }

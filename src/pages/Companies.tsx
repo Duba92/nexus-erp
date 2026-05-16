@@ -112,58 +112,56 @@ import { ScrollArea } from '@/src/components/ui/scroll-area';
             <Plus className="mr-2 h-4 w-4" />
             {t('add_company')}
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px] max-h-[90vh] flex flex-col">
-            <form onSubmit={handleCreateCompany} className="flex flex-col h-full overflow-hidden">
-              <DialogHeader className="flex-shrink-0">
+          <DialogContent className="sm:max-w-[500px] max-h-[95vh] overflow-y-auto">
+            <form onSubmit={handleCreateCompany} className="space-y-6">
+              <DialogHeader>
                 <DialogTitle>{t('add_company')}</DialogTitle>
                 <DialogDescription>
                   Create a new company workspace. A default admin account will be generated.
                 </DialogDescription>
               </DialogHeader>
-              <ScrollArea className="flex-1 pr-4 py-2">
-                <div className="grid gap-4 py-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="name">{t('name')}</Label>
-                    <Input id="name" name="name" required />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="email">{t('email')}</Label>
-                    <Input id="email" name="email" type="email" placeholder="company@example.com" required />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="phone">{t('phone')}</Label>
-                    <Input id="phone" name="phone" placeholder="+251 ..." />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="address">Address</Label>
-                    <Input id="address" name="address" placeholder="Addis Ababa, ..." />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="taxId">Tax ID / VAT</Label>
-                    <Input id="taxId" name="taxId" placeholder="12345..." />
-                  </div>
-                  <Separator className="my-2" />
-                  <Label className="text-primary font-black uppercase text-xs tracking-widest">Modules Access</Label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {['pos', 'inventory', 'hr', 'loans', 'expenses'].map(mod => (
-                      <div key={mod} className="flex items-center gap-2">
-                        <input type="checkbox" name="modules" value={mod} id={`mod-${mod}`} defaultChecked className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
-                        <label htmlFor={`mod-${mod}`} className="text-sm capitalize">{mod}</label>
-                      </div>
-                    ))}
-                  </div>
-                  <Separator className="my-2" />
-                  <div className="grid gap-2">
-                    <Label htmlFor="adminPhone" className="text-primary font-bold text-sm">Owner Login Phone</Label>
-                    <Input id="adminPhone" name="adminPhone" placeholder="+251..." required />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="adminPassword">Owner Initial Password</Label>
-                    <Input id="adminPassword" name="adminPassword" type="password" defaultValue="password123" required />
-                  </div>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="name">{t('name')}</Label>
+                  <Input id="name" name="name" required />
                 </div>
-              </ScrollArea>
-              <DialogFooter className="pt-4 border-t flex-shrink-0">
+                <div className="grid gap-2">
+                  <Label htmlFor="email">{t('email')}</Label>
+                  <Input id="email" name="email" type="email" placeholder="company@example.com" required />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="phone">{t('phone')}</Label>
+                  <Input id="phone" name="phone" placeholder="+251 ..." />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="address">Address</Label>
+                  <Input id="address" name="address" placeholder="Addis Ababa, ..." />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="taxId">Tax ID / VAT</Label>
+                  <Input id="taxId" name="taxId" placeholder="12345..." />
+                </div>
+                <Separator className="my-2" />
+                <Label className="text-primary font-black uppercase text-xs tracking-widest">Modules Access</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {['pos', 'inventory', 'hr', 'loans', 'expenses'].map(mod => (
+                    <div key={mod} className="flex items-center gap-2">
+                      <input type="checkbox" name="modules" value={mod} id={`mod-${mod}`} defaultChecked className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
+                      <label htmlFor={`mod-${mod}`} className="text-sm capitalize">{mod}</label>
+                    </div>
+                  ))}
+                </div>
+                <Separator className="my-2" />
+                <div className="grid gap-2">
+                  <Label htmlFor="adminPhone" className="text-primary font-bold text-sm">Owner Login Phone</Label>
+                  <Input id="adminPhone" name="adminPhone" placeholder="+251..." required />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="adminPassword">Owner Initial Password</Label>
+                  <Input id="adminPassword" name="adminPassword" type="password" defaultValue="password123" required />
+                </div>
+              </div>
+              <DialogFooter className="pt-4 border-t sticky bottom-0 bg-background pb-2">
                 <Button type="submit" className="w-full h-11 font-bold">{t('add_company')}</Button>
               </DialogFooter>
             </form>
