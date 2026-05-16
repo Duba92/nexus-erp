@@ -17,6 +17,10 @@ import {
   ChevronRight,
   Menu,
   Download,
+  HandCoins,
+  ReceiptText,
+  BarChart3,
+  UserRound,
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { Button } from '@/src/components/ui/button';
@@ -37,13 +41,13 @@ import { useEffect } from 'react';
 const navItems: { nameKey: string; path: string; icon: any; roles?: string[] }[] = [
   { nameKey: 'dashboard', path: '/', icon: LayoutDashboard },
   { nameKey: 'companies', path: '/companies', icon: Building2, roles: ['SUPER_ADMIN'] },
-  { nameKey: 'users', path: '/users', icon: User, roles: ['SUPER_ADMIN'] },
+  { nameKey: 'users', path: '/users', icon: UserRound, roles: ['SUPER_ADMIN'] },
   { nameKey: 'pos', path: '/pos', icon: ShoppingCart },
   { nameKey: 'inventory', path: '/inventory', icon: Package },
-  { nameKey: 'loans', path: '/loans', icon: FileText },
+  { nameKey: 'loans', path: '/loans', icon: HandCoins },
   { nameKey: 'employees', path: '/employees', icon: Users },
-  { nameKey: 'expenses', path: '/expenses', icon: FileText },
-  { nameKey: 'reports', path: '/reports', icon: FileText },
+  { nameKey: 'expenses', path: '/expenses', icon: ReceiptText },
+  { nameKey: 'reports', path: '/reports', icon: BarChart3 },
 ];
 
 export default function DashboardLayout() {
@@ -237,50 +241,24 @@ export default function DashboardLayout() {
         </main>
 
         {/* Mobile Bottom Navigation */}
-        <nav className="fixed bottom-0 left-0 z-50 w-full h-14 bg-background/95 backdrop-blur border-t md:hidden flex items-center justify-around px-2 pb-safe">
-          {filteredNavItems.slice(0, 4).map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={cn(
-                "flex flex-col items-center justify-center gap-0.5 min-w-[50px] transition-colors",
-                location.pathname === item.path ? "text-primary font-medium" : "text-muted-foreground"
-              )}
-            >
-              <item.icon className={cn("h-4 w-4", location.pathname === item.path && "text-primary")} />
-              <span className="text-[9px] truncate max-w-[50px]">{t(item.nameKey as any)}</span>
-            </Link>
-          ))}
-          {/* More Menu for mobile if more than 4 items */}
-          {filteredNavItems.length > 4 && (
-            <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-              <SheetTrigger render={
-                <button className="flex flex-col items-center justify-center gap-0.5 min-w-[50px] text-muted-foreground">
-                  <Menu className="h-4 w-4" />
-                  <span className="text-[9px]">More</span>
-                </button>
-              } />
-              <SheetContent side="bottom" className="h-[50vh] rounded-t-2xl">
-                <ScrollArea className="h-full p-4">
-                  <div className="grid grid-cols-3 gap-4">
-                    {filteredNavItems.slice(4).map((item) => (
-                      <Link
-                        key={item.path}
-                        to={item.path}
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className="flex flex-col items-center gap-2 p-2 rounded-xl hover:bg-muted"
-                      >
-                        <div className="p-3 rounded-full bg-primary/10 text-primary">
-                          <item.icon className="h-6 w-6" />
-                        </div>
-                        <span className="text-xs text-center font-medium">{t(item.nameKey as any)}</span>
-                      </Link>
-                    ))}
-                  </div>
-                </ScrollArea>
-              </SheetContent>
-            </Sheet>
-          )}
+        <nav className="fixed bottom-0 left-0 z-50 w-full h-16 bg-background/95 backdrop-blur border-t md:hidden flex items-center justify-between px-1 pb-safe overflow-x-auto no-scrollbar">
+          <div className="flex w-full items-center justify-around min-w-max gap-1 px-2">
+            {filteredNavItems.map((item) => (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={cn(
+                  "flex flex-col items-center justify-center p-2 rounded-xl transition-all",
+                  location.pathname === item.path 
+                    ? "bg-primary/10 text-primary scale-110" 
+                    : "text-muted-foreground hover:bg-muted"
+                )}
+                title={t(item.nameKey as any)}
+              >
+                <item.icon className={cn("h-5 w-5", location.pathname === item.path && "text-primary")} strokeWidth={location.pathname === item.path ? 2.5 : 2} />
+              </Link>
+            ))}
+          </div>
         </nav>
       </div>
     </div>
