@@ -1,20 +1,18 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Hullee POS
 
-# Run and deploy your AI Studio app
+Secure & Reliable POS and Management System for companies and employees.
 
-This contains everything you need to run your app locally.
+## Features
+- Multi-company management
+- Inventory tracking
+- Point of Sale (POS)
+- HR & Employee management (Attendance, Salary, Loans)
+- Sales Reports & Analytics
+- Expenses tracking
+- PWA support (Offline capabilities)
 
-View your app in AI Studio: https://ai.studio/apps/e6669796-1062-4b99-a62f-eaad116e2d80
-
-## Run Locally
-
-**Prerequisites:**  Node.js
-
-
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## Tech Stack
+- Frontend: React 19, Vite, Tailwind CSS, Lucide icons, Framer Motion
+- Database: Dexie (IndexedDB) for local persistence
+- Backend/Auth: Firebase (Authentication & Firestore for cloud sync/backup)
+- Language: TypeScript

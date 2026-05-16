@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { db, type Company } from '@/src/lib/db';
 import { useAuthStore } from '@/src/store/useAuthStore';
-import { normalizePhone } from '@/src/lib/firebase';
+import { normalizePhone, firestore, createSecondaryAuthUser } from '@/src/lib/firebase';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
   Card,
@@ -67,8 +68,17 @@ import { ScrollArea } from '@/src/components/ui/scroll-area';
     try {
       const adminPhone = formData.get('adminPhone') as string;
       const normalizedAdminPhone = normalizePhone(adminPhone);
+      const adminPassword = (formData.get('adminPassword') as string) || 'password123';
 
-      const companyId = await db.companies.add({
+      // 1. Create Firebase Auth account for the Admin
+      let firebaseUid = '';
+      try {
+        firebaseUid = await createSecondaryAuthUser(normalizedAdminPhone, adminPassword);
+      } catch (authError) {
+        console.warn('Firebase account creation failed', authError);
+      }
+
+      const companyObj = {
         name: formData.get('name') as string,
         email: formData.get('email') as string,
         phone: formData.get('phone') as string,
@@ -76,19 +86,42 @@ import { ScrollArea } from '@/src/components/ui/scroll-area';
         taxId: formData.get('taxId') as string,
         allowedModules: selectedModules,
         createdAt: new Date(),
-      });
+      };
 
-      // Create a default admin for this company using PHONE
-      await db.users.add({
+      const companyId = await db.companies.add(companyObj) as number;
+
+      const adminObj = {
         companyId: companyId as number,
         fullName: `${formData.get('name')} Admin`,
         phone: normalizedAdminPhone,
-        email: `${normalizedAdminPhone}@hullee.com`,
-        passwordHash: (formData.get('adminPassword') as string) || 'password123',
-        role: 'COMPANY_ADMIN',
-        permissions: selectedModules, // Give all allowed modules as initial permissions
+        email: `${normalizedAdminPhone}@hullee.app`,
+        passwordHash: adminPassword,
+        role: 'COMPANY_ADMIN' as const,
+        permissions: selectedModules,
         createdAt: new Date(),
-      });
+      };
+
+      // 2. Create a default admin for this company
+      await db.users.add(adminObj);
+
+      // 3. Sync to Firestore
+      try {
+        await setDoc(doc(firestore, 'companies', companyId.toString()), {
+          ...companyObj,
+          id: companyId,
+          createdAt: serverTimestamp(),
+        });
+
+        if (firebaseUid) {
+          await setDoc(doc(firestore, 'users', firebaseUid), {
+            ...adminObj,
+            firebaseUid,
+            createdAt: serverTimestamp(),
+          });
+        }
+      } catch (syncError) {
+        console.error('Firestore sync failed', syncError);
+      }
 
       toast.success('Company and Admin account created');
       setIsCreateOpen(false);

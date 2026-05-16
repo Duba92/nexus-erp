@@ -3,6 +3,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import { db } from '@/src/lib/db';
 import { auth, formatPhoneToEmail, normalizePhone } from '@/src/lib/firebase';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { firestore } from '@/src/lib/firebase';
 import { Button } from '@/src/components/ui/button';
 import { Input } from '@/src/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/src/components/ui/card';
@@ -50,21 +52,46 @@ export default function Register() {
         // 1. Create Company
         const companyId = await db.companies.add({
           name: formData.companyName,
-          email: '', // Not required as per user request
+          email: '', 
           createdAt: new Date(),
         }) as number;
 
-        // 2. Create User as COMPANY_ADMIN
-        await db.users.add({
+        const companyData = {
+          id: companyId,
+          name: formData.companyName,
+          email: '',
+          createdAt: new Date(),
+        };
+
+        const userData = {
           companyId,
           fullName: formData.fullName,
           phone: normalizedPhone,
-          email: `${normalizedPhone}@hullee.com`, // Dummy email for legacy compatibility
+          email: `${normalizedPhone}@hullee.app`,
           passwordHash: formData.password,
-          role: 'COMPANY_ADMIN',
+          role: 'COMPANY_ADMIN' as const,
           permissions: ['pos', 'inventory', 'hr', 'sales'],
           createdAt: new Date(),
-        });
+        };
+
+        // 2. Create User as COMPANY_ADMIN
+        await db.users.add(userData);
+
+        // 3. Sync to Firestore for multi-device login
+        try {
+          await setDoc(doc(firestore, 'companies', companyId.toString()), {
+            ...companyData,
+            createdAt: serverTimestamp(),
+          });
+          
+          await setDoc(doc(firestore, 'users', userCredential.user.uid), {
+            ...userData,
+            firebaseUid: userCredential.user.uid,
+            createdAt: serverTimestamp(),
+          });
+        } catch (syncError) {
+          console.error('Firestore sync failed', syncError);
+        }
       });
 
       toast.success('Registration successful! Please login.');

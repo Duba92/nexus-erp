@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { db, type User, type Department } from '@/src/lib/db';
 import { useAuthStore } from '@/src/store/useAuthStore';
-import { normalizePhone } from '@/src/lib/firebase';
+import { normalizePhone, firestore, createSecondaryAuthUser } from '@/src/lib/firebase';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { cn } from '@/src/lib/utils';
 import {
@@ -108,19 +109,46 @@ export default function Employees() {
       const role = formData.get('role') as any || 'EMPLOYEE';
       const phone = formData.get('phone') as string;
       const normalizedPhone = normalizePhone(phone);
+      const password = formData.get('password') as string || 'employee123';
       
-      await db.users.add({
+      // 1. Create Firebase Auth User (Secondary)
+      let firebaseUid = '';
+      try {
+        firebaseUid = await createSecondaryAuthUser(normalizedPhone, password);
+      } catch (authError) {
+        console.warn('Firebase user creation failed (account might already exist)', authError);
+        // We can't easily get the UID if it exists, so we proceed and 
+        // local ID will be used or sync might fail if trying to overwrite
+      }
+
+      const employeeData = {
         companyId: currentCompany.id!,
         fullName: formData.get('fullName') as string,
-        email: formData.get('email') as string,
-        passwordHash: formData.get('password') as string || 'employee123',
+        email: `${normalizedPhone}@hullee.app`,
+        passwordHash: password,
         role: role,
         permissions: selectedPermissions,
         phone: normalizedPhone,
         salary: parseFloat(formData.get('salary') as string),
         departmentId: parseInt(formData.get('departmentId') as string),
         createdAt: new Date(),
-      });
+      };
+      
+      // 2. Add to local Dexie
+      const localId = await db.users.add(employeeData);
+
+      // 3. Sync to Firestore
+      if (firebaseUid) {
+        try {
+          await setDoc(doc(firestore, 'users', firebaseUid), {
+            ...employeeData,
+            firebaseUid,
+            createdAt: serverTimestamp(),
+          });
+        } catch (syncError) {
+          console.error('Firestore sync failed', syncError);
+        }
+      }
 
       toast.success('Employee registered successfully');
       setSelectedPermissions(['pos']);

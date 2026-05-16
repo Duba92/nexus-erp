@@ -40,11 +40,23 @@ service cloud.firestore {
                data.createdAt is timestamp;
       }
 
-      allow read: if isSignedIn() && (isOwner(userId) || isSuperAdmin() || getUserData().companyId == resource.data.companyId);
-      allow create: if isSignedIn() && (isSuperAdmin() || (getUserData().role == 'COMPANY_ADMIN' && request.resource.data.companyId == getUserData().companyId)) && isValidUser(request.resource.data);
-      allow update: if isSignedIn() && (isOwner(userId) || isSuperAdmin() || (getUserData().role == 'COMPANY_ADMIN' && resource.data.companyId == getUserData().companyId)) && 
-                     isValidUser(request.resource.data) &&
-                     request.resource.data.role == resource.data.role; // Role cannot be changed by user
+      allow read: if isSignedIn() && (isOwner(userId) || isSuperAdmin() || (getUserData().companyId == resource.data.companyId));
+      
+      // Allow creation if the user is creating their own profile
+      // OR if an admin is creating an employee profile in the same company
+      allow create: if isSignedIn() && (
+        isOwner(userId) || 
+        isSuperAdmin() || 
+        (getUserData().role == 'COMPANY_ADMIN' && request.resource.data.companyId == getUserData().companyId)
+      ) && isValidUser(request.resource.data);
+      
+      allow update: if isSignedIn() && (
+        isOwner(userId) || 
+        isSuperAdmin() || 
+        (getUserData().role == 'COMPANY_ADMIN' && resource.data.companyId == getUserData().companyId)
+      ) && isValidUser(request.resource.data) &&
+        (isSuperAdmin() || request.resource.data.role == resource.data.role); 
+      
       allow delete: if isSuperAdmin();
     }
 
@@ -56,8 +68,12 @@ service cloud.firestore {
       }
 
       allow read: if isSignedIn() && (isSuperAdmin() || getUserData().companyId == companyId);
-      allow create: if isSuperAdmin();
-      allow update: if isSuperAdmin() && isValidCompany(request.resource.data);
+      
+      // Allow any authenticated user to create a company (e.g. during registration)
+      // In a real app we might restrict this more but for now it enables registration
+      allow create: if isSignedIn() && isValidCompany(request.resource.data);
+      
+      allow update: if isSignedIn() && (isSuperAdmin() || (getUserData().role == 'COMPANY_ADMIN' && getUserData().companyId == companyId)) && isValidCompany(request.resource.data);
       allow delete: if isSuperAdmin();
     }
 

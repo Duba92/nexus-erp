@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { db } from '@/src/lib/db';
 import { auth, formatPhoneToEmail, normalizePhone } from '@/src/lib/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { firestore } from '@/src/lib/firebase';
 import { useAuthStore } from '@/src/store/useAuthStore';
 import { cn } from '@/src/lib/utils';
 import { Button } from '@/src/components/ui/button';
@@ -29,16 +31,55 @@ export default function Login() {
       const normalizedPhone = normalizePhone(phone);
       // 1. Firebase Auth Sign In
       const firebaseEmail = formatPhoneToEmail(normalizedPhone);
+      let firebaseUser = null;
       try {
-        await signInWithEmailAndPassword(auth, firebaseEmail, password);
+        const userCredential = await signInWithEmailAndPassword(auth, firebaseEmail, password);
+        firebaseUser = userCredential.user;
       } catch (fError) {
-        // Fallback for bootstrap users like Super Admin if they aren't in Firebase yet
-        // In a real app, you'd migrate them or ensure they exist in Firebase
         console.warn('Firebase login failed, checking local DB', fError);
       }
 
       // 2. Local DB Check
-      const user = await db.users.where('phone').equals(normalizedPhone).first();
+      let user = await db.users.where('phone').equals(normalizedPhone).first();
+
+      // 3. If not in local DB but Firebase login succeeded, fetch from Firestore
+      if (!user && firebaseUser) {
+        setIsSyncing(true);
+        const userDoc = await getDoc(doc(firestore, 'users', firebaseUser.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          // Map Firestore data back to Dexie User type
+          user = {
+            companyId: userData.companyId,
+            fullName: userData.fullName,
+            phone: userData.phone,
+            email: userData.email,
+            passwordHash: userData.passwordHash,
+            role: userData.role,
+            permissions: userData.permissions,
+            createdAt: userData.createdAt?.toDate() || new Date(),
+          };
+          // Add to local DB
+          const userId = await db.users.add(user);
+          user.id = userId;
+
+          // Also fetch company if it exists
+          if (user.companyId) {
+            const companyDoc = await getDoc(doc(firestore, 'companies', user.companyId.toString()));
+            if (companyDoc.exists()) {
+              const companyData = companyDoc.data();
+              const company = {
+                id: user.companyId,
+                name: companyData.name,
+                email: companyData.email,
+                createdAt: companyData.createdAt?.toDate() || new Date(),
+              };
+              // Add/Update local company
+              await db.companies.put(company);
+            }
+          }
+        }
+      }
 
       if (user && user.passwordHash === password) {
         let company = null;
