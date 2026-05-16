@@ -56,43 +56,40 @@ export default function Login() {
               passwordHash: userData.passwordHash,
               role: userData.role,
               permissions: userData.permissions,
-              createdAt: userData.createdAt?.toDate() || new Date(),
+              createdAt: userData.createdAt?.toDate?.() || new Date(),
             };
 
-              if (user) {
-                // Update local profile with latest from Firestore
-                await db.users.update(user.id!, syncedUserData);
-                user = { ...user, ...syncedUserData };
-              } else {
-                // First time on this device
-                const newUser = { id: firebaseUser.uid, ...syncedUserData };
-                await db.users.add(newUser);
-                user = newUser;
-              }
+            if (user) {
+              await db.users.update(user.id!, syncedUserData);
+              user = { ...user, ...syncedUserData };
+            } else {
+              const newUser = { id: firebaseUser.uid, ...syncedUserData };
+              await db.users.add(newUser);
+              user = newUser;
+            }
 
-              // SYNC ALL COMPANY USERS (EMPLOYEES)
-              const usersQ = query(collection(firestore, 'users'), where('companyId', '==', user.companyId));
-              const usersSnapshot = await getDocs(usersQ);
-              for (const uDoc of usersSnapshot.docs) {
-                const uData = uDoc.data();
-                await db.users.put({
-                  id: uDoc.id,
-                  companyId: uData.companyId,
-                  fullName: uData.fullName,
-                  phone: uData.phone,
-                  email: uData.email,
-                  passwordHash: uData.passwordHash,
-                  role: uData.role,
-                  permissions: uData.permissions,
-                  departmentId: uData.departmentId,
-                  salary: uData.salary,
-                  createdAt: uData.createdAt?.toDate() || new Date(),
-                });
-              }
+            // SYNC ALL COMPANY USERS (EMPLOYEES) - Important for HR module to work on all devices
+            const usersQ = query(collection(firestore, 'users'), where('companyId', '==', user.companyId));
+            const usersSnapshot = await getDocs(usersQ);
+            for (const uDoc of usersSnapshot.docs) {
+              const uData = uDoc.data();
+              await db.users.put({
+                id: uDoc.id,
+                companyId: uData.companyId,
+                fullName: uData.fullName,
+                phone: uData.phone,
+                email: uData.email,
+                passwordHash: uData.passwordHash,
+                role: uData.role,
+                permissions: uData.permissions,
+                departmentId: uData.departmentId,
+                salary: uData.salary,
+                createdAt: uData.createdAt?.toDate?.() || new Date(),
+              });
+            }
 
-              // Also sync company data
-              if (user.companyId) {
-
+            // Also sync company data
+            if (user.companyId) {
               const companyDoc = await getDoc(doc(firestore, 'companies', user.companyId));
               if (companyDoc.exists()) {
                 const companyData = companyDoc.data();
@@ -104,7 +101,7 @@ export default function Login() {
                   address: companyData.address,
                   taxId: companyData.taxId,
                   allowedModules: companyData.allowedModules,
-                  createdAt: companyData.createdAt?.toDate() || new Date(),
+                  createdAt: companyData.createdAt?.toDate?.() || new Date(),
                 };
                 await db.companies.put(company);
               }
@@ -126,22 +123,17 @@ export default function Login() {
                 const snapshot = await getDocs(q);
                 for (const d of snapshot.docs) {
                   const data = d.data();
-                  // Put into local Dexie
                   await (db as any)[collName].put({
                     id: d.id,
                     ...data,
-                    // If there are dates, convert them back to Date objects
-                    createdAt: data.createdAt?.toDate?.() || data.createdAt?.seconds 
-                      ? new Date(data.createdAt.seconds * 1000) 
-                      : (data.date?.toDate?.() ? data.date.toDate() : new Date()),
-                    date: data.date?.toDate?.() ? data.date.toDate() : (data.date ? new Date(data.date) : undefined),
-                    dueDate: data.dueDate?.toDate?.() ? data.dueDate.toDate() : undefined,
-                    checkIn: data.checkIn?.toDate?.() ? data.checkIn.toDate() : undefined,
-                    checkOut: data.checkOut?.toDate?.() ? data.checkOut.toDate() : undefined,
+                    createdAt: data.createdAt?.toDate?.() || new Date(),
+                    date: data.date?.toDate?.() || (data.date ? new Date(data.date) : undefined),
+                    dueDate: data.dueDate?.toDate?.() || undefined,
+                    checkIn: data.checkIn?.toDate?.() || undefined,
+                    checkOut: data.checkOut?.toDate?.() || undefined,
                   });
                 }
               }
-
             }
           }
         } catch (syncError) {

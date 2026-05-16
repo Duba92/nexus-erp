@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { db } from '@/src/lib/db';
-import { auth, formatPhoneToEmail, normalizePhone } from '@/src/lib/firebase';
+import { auth, formatPhoneToEmail, normalizePhone, firestore } from '@/src/lib/firebase';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { firestore } from '@/src/lib/firebase';
+import { doc, setDoc, serverTimestamp, collection, query, where, getDocs } from 'firebase/firestore';
 import { useAuthStore } from '@/src/store/useAuthStore';
 import { Button } from '@/src/components/ui/button';
 import { Input } from '@/src/components/ui/input';
@@ -43,9 +42,20 @@ export default function Register() {
 
     try {
       const normalizedPhone = normalizePhone(formData.phone);
-      // 1. Firebase Auth Registration
-      const firebaseEmail = formatPhoneToEmail(normalizedPhone);
-      const userCredential = await createUserWithEmailAndPassword(auth, firebaseEmail, formData.password);
+      
+      // 1. Check if phone number already exists in Firestore (Multi-device uniqueness)
+      const phoneEmail = formatPhoneToEmail(normalizedPhone);
+      const existingUserQuery = query(collection(firestore, 'users'), where('phone', '==', normalizedPhone));
+      const existingUserSnapshot = await getDocs(existingUserQuery);
+      
+      if (!existingUserSnapshot.empty) {
+        toast.error('This phone number is already registered. Please login instead.');
+        setIsLoading(false);
+        return;
+      }
+
+      // 2. Firebase Auth Registration
+      const userCredential = await createUserWithEmailAndPassword(auth, phoneEmail, formData.password);
       await updateProfile(userCredential.user, { displayName: formData.fullName });
 
       const companyId = crypto.randomUUID();
@@ -61,45 +71,43 @@ export default function Register() {
         companyId,
         fullName: formData.fullName,
         phone: normalizedPhone,
-        email: `${normalizedPhone}@hullee.app`,
+        email: phoneEmail,
         passwordHash: formData.password,
         role: 'COMPANY_ADMIN' as const,
         permissions: ['pos', 'inventory', 'hr', 'sales'],
         createdAt: new Date(),
       };
 
-      // 2. Local DB Sync
+      // 3. Local DB Sync
       await db.companies.put(companyData);
       await db.users.put(userData);
 
-      // 3. Sync to Firestore for multi-device login (background to avoid blocking)
-      const syncToFirestore = async () => {
-        try {
-          await setDoc(doc(firestore, 'companies', companyId), {
-            ...companyData,
-            createdAt: serverTimestamp(),
-          });
-          
-          await setDoc(doc(firestore, 'users', userCredential.user.uid), {
-            ...userData,
-            firebaseUid: userCredential.user.uid,
-            createdAt: serverTimestamp(),
-          });
-          console.log('Registered and synced to Firestore');
-        } catch (syncError) {
-          console.error('Firestore sync failed at registration', syncError);
-        }
-      };
-      
-      // Start sync but don't await it to block the UI transition
-      syncToFirestore();
+      // 4. Sync to Firestore (Mandatory for multi-device)
+      try {
+        await setDoc(doc(firestore, 'companies', companyId), {
+          ...companyData,
+          createdAt: serverTimestamp(),
+        });
+        
+        await setDoc(doc(firestore, 'users', userCredential.user.uid), {
+          ...userData,
+          firebaseUid: userCredential.user.uid,
+          createdAt: serverTimestamp(),
+        });
+      } catch (syncError) {
+        console.error('Firestore sync failed at registration', syncError);
+      }
 
       // Auto login and navigate
       const { setAuth } = useAuthStore.getState();
       setAuth(userData as any, companyData as any);
       
       toast.success('Registration successful! Welcome to Hullee.');
-      navigate('/');
+      
+      // Slight delay to allow toast to be seen
+      setTimeout(() => {
+        navigate('/');
+      }, 500);
 
     } catch (error) {
       toast.error('Registration failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
