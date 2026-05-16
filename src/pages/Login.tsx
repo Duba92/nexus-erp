@@ -36,59 +36,74 @@ export default function Login() {
         const userCredential = await signInWithEmailAndPassword(auth, firebaseEmail, password);
         firebaseUser = userCredential.user;
       } catch (fError) {
-        console.warn('Firebase login failed, checking local DB', fError);
+        console.warn('Firebase login failed, checking local DB (offline fallback)', fError);
       }
 
-      // 2. Local DB Check
+      // 2. Fetch/Update Local DB from Firestore if online and authenticated
       let user = await db.users.where('phone').equals(normalizedPhone).first();
-
-      // 3. If not in local DB but Firebase login succeeded, fetch from Firestore
-      if (!user && firebaseUser) {
+      
+      if (firebaseUser) {
         setIsSyncing(true);
-        const userDoc = await getDoc(doc(firestore, 'users', firebaseUser.uid));
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
-          // Map Firestore data back to Dexie User type
-          user = {
-            companyId: userData.companyId,
-            fullName: userData.fullName,
-            phone: userData.phone,
-            email: userData.email,
-            passwordHash: userData.passwordHash,
-            role: userData.role,
-            permissions: userData.permissions,
-            createdAt: userData.createdAt?.toDate() || new Date(),
-          };
-          // Add to local DB
-          const userId = await db.users.add(user);
-          user.id = userId;
+        try {
+          const userDoc = await getDoc(doc(firestore, 'users', firebaseUser.uid));
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            const syncedUserData = {
+              companyId: userData.companyId,
+              fullName: userData.fullName,
+              phone: userData.phone,
+              email: userData.email,
+              passwordHash: userData.passwordHash,
+              role: userData.role,
+              permissions: userData.permissions,
+              createdAt: userData.createdAt?.toDate() || new Date(),
+            };
 
-          // Also fetch company if it exists
-          if (user.companyId) {
-            const companyDoc = await getDoc(doc(firestore, 'companies', user.companyId.toString()));
-            if (companyDoc.exists()) {
-              const companyData = companyDoc.data();
-              const company = {
-                id: user.companyId,
-                name: companyData.name,
-                email: companyData.email,
-                createdAt: companyData.createdAt?.toDate() || new Date(),
-              };
-              // Add/Update local company
-              await db.companies.put(company);
+            if (user) {
+              // Update local profile with latest from Firestore
+              await db.users.update(user.id!, syncedUserData);
+              user = { ...user, ...syncedUserData };
+            } else {
+              // First time on this device
+              const userId = await db.users.add(syncedUserData);
+              user = { id: userId, ...syncedUserData };
+            }
+
+            // Also sync company data
+            if (user.companyId) {
+              const companyDoc = await getDoc(doc(firestore, 'companies', user.companyId.toString()));
+              if (companyDoc.exists()) {
+                const companyData = companyDoc.data();
+                const company = {
+                  id: user.companyId,
+                  name: companyData.name,
+                  email: companyData.email,
+                  phone: companyData.phone,
+                  address: companyData.address,
+                  taxId: companyData.taxId,
+                  allowedModules: companyData.allowedModules,
+                  createdAt: companyData.createdAt?.toDate() || new Date(),
+                };
+                await db.companies.put(company);
+              }
             }
           }
+        } catch (syncError) {
+          console.error('Firestore sync failed during login', syncError);
         }
       }
 
+      // 3. Final validation (works offline using local hash)
       if (user && user.passwordHash === password) {
         let company = null;
         if (user.companyId) {
           company = (await db.companies.get(user.companyId)) || null;
         }
         
-        setIsSyncing(true);
-        await new Promise(r => setTimeout(r, 1200));
+        if (firebaseUser) {
+          // Add a small delay for visual feedback if syncing happened
+          await new Promise(r => setTimeout(r, 800));
+        }
 
         setAuth(user, company);
         toast.success(`Welcome back, ${user.fullName}`);

@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { db } from '@/src/lib/db';
 import { useAuthStore } from '@/src/store/useAuthStore';
+import { auth, firestore } from '@/src/lib/firebase';
+import { updatePassword } from 'firebase/auth';
+import { doc, updateDoc } from 'firebase/firestore';
 import {
   Card,
   CardContent,
@@ -18,6 +21,7 @@ import { Badge } from '@/src/components/ui/badge';
 export default function Profile() {
   const { currentUser, updateUser } = useAuthStore();
   const [passwordData, setPasswordData] = useState({ current: '', new: '', confirm: '' });
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,13 +34,44 @@ export default function Profile() {
       return toast.error('Current password incorrect');
     }
 
+    setIsLoading(true);
     try {
+      // 1. Update Firebase Auth Password (if online)
+      if (auth.currentUser) {
+        try {
+          await updatePassword(auth.currentUser, passwordData.new);
+        } catch (authError: any) {
+          if (authError.code === 'auth/requires-recent-login') {
+            toast.error('Please logout and login again to change password (security requirement)');
+            setIsLoading(false);
+            return;
+          }
+          throw authError;
+        }
+      }
+
+      // 2. Update Local DB
       await db.users.update(currentUser.id!, { passwordHash: passwordData.new });
+      
+      // 3. Update Firestore (if online)
+      if (auth.currentUser) {
+        try {
+          await updateDoc(doc(firestore, 'users', auth.currentUser.uid), {
+            passwordHash: passwordData.new
+          });
+        } catch (syncError) {
+          console.warn('Firestore sync failed', syncError);
+        }
+      }
+
       updateUser({ ...currentUser, passwordHash: passwordData.new });
       toast.success('Password updated successfully');
       setPasswordData({ current: '', new: '', confirm: '' });
     } catch (err) {
+      console.error(err);
       toast.error('Failed to update password');
+    } finally {
+      setIsLoading(false);
     }
   };
 

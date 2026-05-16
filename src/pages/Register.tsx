@@ -78,20 +78,16 @@ export default function Register() {
         await db.users.add(userData);
 
         // 3. Sync to Firestore for multi-device login
-        try {
-          await setDoc(doc(firestore, 'companies', companyId.toString()), {
-            ...companyData,
-            createdAt: serverTimestamp(),
-          });
-          
-          await setDoc(doc(firestore, 'users', userCredential.user.uid), {
-            ...userData,
-            firebaseUid: userCredential.user.uid,
-            createdAt: serverTimestamp(),
-          });
-        } catch (syncError) {
-          console.error('Firestore sync failed', syncError);
-        }
+        await setDoc(doc(firestore, 'companies', companyId.toString()), {
+          ...companyData,
+          createdAt: serverTimestamp(),
+        });
+        
+        await setDoc(doc(firestore, 'users', userCredential.user.uid), {
+          ...userData,
+          firebaseUid: userCredential.user.uid,
+          createdAt: serverTimestamp(),
+        });
       });
 
       toast.success('Registration successful! Please login.');

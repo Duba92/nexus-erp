@@ -9,7 +9,16 @@ export const firestore = getFirestore(app);
 
 export const normalizePhone = (phone: string) => {
   // Remove all non-digits
-  return phone.replace(/\D/g, '');
+  let digits = phone.replace(/\D/g, '');
+  // Standardize Ethiopian numbers: if starts with 09 or 07, prepend 251 (and remove leading 0)
+  if (digits.startsWith('0') && digits.length === 10) {
+    digits = '251' + digits.substring(1);
+  }
+  // If it's a 9-digit number starting with 9 or 7, prepend 251
+  if (digits.length === 9 && (digits.startsWith('9') || digits.startsWith('7'))) {
+    digits = '251' + digits;
+  }
+  return digits;
 };
 
 export const formatPhoneToEmail = (phone: string) => {
