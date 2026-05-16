@@ -14,9 +14,9 @@ export default defineConfig(({mode}) => {
         registerType: 'autoUpdate',
         includeAssets: ['favicon.ico', 'icon.svg', 'apple-touch-icon.png'],
         manifest: {
-          name: 'Hullee POS & HRM',
+          name: 'Hullee',
           short_name: 'Hullee',
-          description: 'Inventory, POS, and HR Management System for Ethiopia',
+          description: 'Inventory, POS, and HR Management System',
           theme_color: '#0f172a',
           background_color: '#ffffff',
           display: 'standalone',
@@ -63,6 +63,7 @@ export default defineConfig(({mode}) => {
         },
         workbox: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+          navigateFallback: 'index.html',
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,

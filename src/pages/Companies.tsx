@@ -112,15 +112,15 @@ import { ScrollArea } from '@/src/components/ui/scroll-area';
             <Plus className="mr-2 h-4 w-4" />
             {t('add_company')}
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
-            <form onSubmit={handleCreateCompany}>
-              <DialogHeader>
+          <DialogContent className="sm:max-w-[500px] max-h-[90vh] flex flex-col">
+            <form onSubmit={handleCreateCompany} className="flex flex-col h-full overflow-hidden">
+              <DialogHeader className="flex-shrink-0">
                 <DialogTitle>{t('add_company')}</DialogTitle>
                 <DialogDescription>
                   Create a new company workspace. A default admin account will be generated.
                 </DialogDescription>
               </DialogHeader>
-              <ScrollArea className="max-h-[70vh] pr-4 py-2">
+              <ScrollArea className="flex-1 pr-4 py-2">
                 <div className="grid gap-4 py-4">
                   <div className="grid gap-2">
                     <Label htmlFor="name">{t('name')}</Label>
@@ -163,7 +163,7 @@ import { ScrollArea } from '@/src/components/ui/scroll-area';
                   </div>
                 </div>
               </ScrollArea>
-              <DialogFooter className="pt-4 border-t">
+              <DialogFooter className="pt-4 border-t flex-shrink-0">
                 <Button type="submit" className="w-full h-11 font-bold">{t('add_company')}</Button>
               </DialogFooter>
             </form>
