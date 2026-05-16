@@ -58,9 +58,13 @@ function ProtectedRoute({
 }
 
 import { ThemeProvider } from './components/ThemeProvider';
+import { useSync } from './hooks/useSync';
 
 export default function App() {
   const { isAuthenticated } = useAuthStore();
+  
+  // Enable real-time Firestore -> Dexie sync
+  useSync();
 
   return (
     <ThemeProvider>

@@ -67,8 +67,40 @@ export default function Login() {
               await db.users.add(newUser);
               user = newUser;
             }
+          } else {
+            // Handle case where Auth exists but Firestore record is missing (Bootstrap/Repair)
+            // If the phone matches super admin, we can bootstrap it locally
+            if (normalizedPhone === '251992932031') {
+              console.log('Bootstrapping Super Admin profile locally');
+              const superAdminData = {
+                id: firebaseUser.uid,
+                companyId: undefined,
+                fullName: 'Super Admin',
+                phone: normalizedPhone,
+                email: firebaseEmail,
+                passwordHash: password, // Store provided password as hash for local fallback
+                role: 'SUPER_ADMIN' as const,
+                permissions: ['all'],
+                createdAt: new Date(),
+              };
+              if (user) {
+                await db.users.update(user.id!, superAdminData as any);
+              } else {
+                await db.users.add(superAdminData as any);
+              }
+              user = superAdminData as any;
+              
+              // Also sync to Firestore for future logins
+              await setDoc(doc(firestore, 'users', firebaseUser.uid), {
+                ...superAdminData,
+                firebaseUid: firebaseUser.uid,
+                createdAt: serverTimestamp(),
+              });
+            }
+          }
 
-            // SYNC ALL COMPANY USERS (EMPLOYEES) - Important for HR module to work on all devices
+          // SYNC ALL COMPANY USERS (EMPLOYEES) - Important for HR module to work on all devices
+          if (user && user.companyId) {
             const usersQ = query(collection(firestore, 'users'), where('companyId', '==', user.companyId));
             const usersSnapshot = await getDocs(usersQ);
             for (const uDoc of usersSnapshot.docs) {
@@ -87,9 +119,10 @@ export default function Login() {
                 createdAt: uData.createdAt?.toDate?.() || new Date(),
               });
             }
+          }
 
-            // Also sync company data
-            if (user.companyId) {
+          // Also sync company data
+          if (user && user.companyId) {
               const companyDoc = await getDoc(doc(firestore, 'companies', user.companyId));
               if (companyDoc.exists()) {
                 const companyData = companyDoc.data();
@@ -115,6 +148,8 @@ export default function Login() {
                 'loans',
                 'sales',
                 'saleItems',
+                'purchases',
+                'purchaseItems',
                 'transactions',
                 'attendance'
               ];
@@ -135,11 +170,10 @@ export default function Login() {
                 }
               }
             }
+          } catch (syncError) {
+            console.error('Firestore sync failed during login', syncError);
           }
-        } catch (syncError) {
-          console.error('Firestore sync failed during login', syncError);
         }
-      }
 
       // 3. Final validation (works offline using local hash)
       if (user && user.passwordHash === password) {

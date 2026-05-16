@@ -42,19 +42,10 @@ export default function Register() {
 
     try {
       const normalizedPhone = normalizePhone(formData.phone);
-      
-      // 1. Check if phone number already exists in Firestore (Multi-device uniqueness)
       const phoneEmail = formatPhoneToEmail(normalizedPhone);
-      const existingUserQuery = query(collection(firestore, 'users'), where('phone', '==', normalizedPhone));
-      const existingUserSnapshot = await getDocs(existingUserQuery);
       
-      if (!existingUserSnapshot.empty) {
-        toast.error('This phone number is already registered. Please login instead.');
-        setIsLoading(false);
-        return;
-      }
-
-      // 2. Firebase Auth Registration
+      // 1. Firebase Auth Registration
+      // We rely on Auth's email uniqueness for the phone-to-email mapping
       const userCredential = await createUserWithEmailAndPassword(auth, phoneEmail, formData.password);
       await updateProfile(userCredential.user, { displayName: formData.fullName });
 
@@ -78,11 +69,11 @@ export default function Register() {
         createdAt: new Date(),
       };
 
-      // 3. Local DB Sync
+      // 2. Local DB Sync
       await db.companies.put(companyData);
       await db.users.put(userData);
 
-      // 4. Sync to Firestore (Mandatory for multi-device)
+      // 3. Sync to Firestore (Mandatory for multi-device login)
       try {
         await setDoc(doc(firestore, 'companies', companyId), {
           ...companyData,
@@ -96,6 +87,7 @@ export default function Register() {
         });
       } catch (syncError) {
         console.error('Firestore sync failed at registration', syncError);
+        // We continue because local DB has the state, but this means multi-device might be delayed
       }
 
       // Auto login and navigate
@@ -109,8 +101,12 @@ export default function Register() {
         navigate('/');
       }, 500);
 
-    } catch (error) {
-      toast.error('Registration failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    } catch (error: any) {
+      if (error.code === 'auth/email-already-in-use') {
+        toast.error('This phone number is already registered. Please login instead.');
+      } else {
+        toast.error('Registration failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      }
       console.error(error);
     } finally {
       setIsLoading(false);
