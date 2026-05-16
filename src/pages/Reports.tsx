@@ -77,7 +77,7 @@ export default function Reports() {
       productsQuery = db.products;
     }
     const prods = await productsQuery.toArray();
-    const prodMap = new Map<number, Product>(prods.map(p => [p.id!, p]));
+    const prodMap = new Map<string, Product>(prods.map(p => [p.id!, p]));
     
     return items.reduce((acc, item) => {
       const prod = prodMap.get(item.productId);
@@ -193,7 +193,7 @@ export default function Reports() {
                   <>
                     {sales.slice(0, 10).map((s) => (
                       <TableRow key={s.id}>
-                        <TableCell className="font-medium text-xs">#{s.id}</TableCell>
+                        <TableCell className="font-medium text-xs">#{s.id?.slice(0, 8)}</TableCell>
                         <TableCell className="text-xs">{format(s.date, 'MMM dd, HH:mm')}</TableCell>
                         <TableCell>
                           <Badge variant="outline" className="text-[10px]">{s.paymentMethod}</Badge>

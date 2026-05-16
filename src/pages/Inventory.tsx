@@ -88,6 +88,7 @@ export default function Inventory() {
 
     try {
       await db.products.add({
+        id: crypto.randomUUID(),
         companyId: currentCompany.id!,
         name,
         quantity,
@@ -144,7 +145,7 @@ export default function Inventory() {
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Delete this product?')) {
       await db.products.delete(id);
       toast.success('Product deleted');

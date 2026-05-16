@@ -74,6 +74,7 @@ export default function Loans() {
     try {
       const amount = parseFloat(formData.amount);
       await db.loans.add({
+        id: crypto.randomUUID(),
         companyId: currentCompany.id!,
         borrowerName: formData.borrowerName,
         phone: formData.phone,
@@ -101,7 +102,7 @@ export default function Loans() {
     }
   };
 
-  const updateStatus = async (id: number, status: 'PENDING' | 'PARTIAL' | 'PAID') => {
+  const updateStatus = async (id: string, status: 'PENDING' | 'PARTIAL' | 'PAID') => {
     try {
       const loan = await db.loans.get(id);
       if (!loan) return;
@@ -116,7 +117,7 @@ export default function Loans() {
     }
   };
 
-  const deleteLoan = async (id: number) => {
+  const deleteLoan = async (id: string) => {
     if (!confirm('Are you sure you want to delete this record?')) return;
     try {
       await db.loans.delete(id);

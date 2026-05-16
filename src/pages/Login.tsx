@@ -65,13 +65,14 @@ export default function Login() {
               user = { ...user, ...syncedUserData };
             } else {
               // First time on this device
-              const userId = await db.users.add(syncedUserData);
-              user = { id: userId, ...syncedUserData };
+              const newUser = { id: firebaseUser.uid, ...syncedUserData };
+              await db.users.add(newUser);
+              user = newUser;
             }
 
             // Also sync company data
             if (user.companyId) {
-              const companyDoc = await getDoc(doc(firestore, 'companies', user.companyId.toString()));
+              const companyDoc = await getDoc(doc(firestore, 'companies', user.companyId));
               if (companyDoc.exists()) {
                 const companyData = companyDoc.data();
                 const company = {

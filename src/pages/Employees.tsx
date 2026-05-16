@@ -81,6 +81,7 @@ export default function Employees() {
     const formData = new FormData(e.currentTarget);
     try {
       await db.departments.add({
+        id: crypto.randomUUID(),
         companyId: currentCompany.id!,
         name: formData.get('name') as string,
         description: formData.get('description') as string,
@@ -121,7 +122,9 @@ export default function Employees() {
         // local ID will be used or sync might fail if trying to overwrite
       }
 
+      const employeeId = firebaseUid || crypto.randomUUID();
       const employeeData = {
+        id: employeeId,
         companyId: currentCompany.id!,
         fullName: formData.get('fullName') as string,
         email: `${normalizedPhone}@hullee.app`,
@@ -130,24 +133,22 @@ export default function Employees() {
         permissions: selectedPermissions,
         phone: normalizedPhone,
         salary: parseFloat(formData.get('salary') as string),
-        departmentId: parseInt(formData.get('departmentId') as string),
+        departmentId: formData.get('departmentId') as string,
         createdAt: new Date(),
       };
       
       // 2. Add to local Dexie
-      const localId = await db.users.add(employeeData);
+      await db.users.add(employeeData);
 
       // 3. Sync to Firestore
-      if (firebaseUid) {
-        try {
-          await setDoc(doc(firestore, 'users', firebaseUid), {
-            ...employeeData,
-            firebaseUid,
-            createdAt: serverTimestamp(),
-          });
-        } catch (syncError) {
-          console.error('Firestore sync failed', syncError);
-        }
+      try {
+        await setDoc(doc(firestore, 'users', employeeId), {
+          ...employeeData,
+          firebaseUid: employeeId,
+          createdAt: serverTimestamp(),
+        });
+      } catch (syncError) {
+        console.error('Firestore sync failed', syncError);
       }
 
       toast.success('Employee registered successfully');
@@ -176,7 +177,7 @@ export default function Employees() {
         permissions: selectedPermissions,
         phone: normalizedPhone,
         salary: parseFloat(formData.get('salary') as string),
-        departmentId: parseInt(formData.get('departmentId') as string),
+        departmentId: formData.get('departmentId') as string,
       });
 
       toast.success('Employee updated successfully');
@@ -188,7 +189,7 @@ export default function Employees() {
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Deactivate this employee account?')) {
       await db.users.delete(id);
       toast.success('Employee removed');
@@ -280,7 +281,7 @@ export default function Employees() {
                     </SelectTrigger>
                     <SelectContent>
                       {departments?.map(d => (
-                        <SelectItem key={d.id} value={d.id!.toString()}>{d.name}</SelectItem>
+                        <SelectItem key={d.id} value={d.id!}>{d.name}</SelectItem>
                       ))}
                       {!departments?.length && <SelectItem value="0" disabled>No departments defined</SelectItem>}
                     </SelectContent>
@@ -531,13 +532,13 @@ export default function Employees() {
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="edit-departmentId">Department</Label>
-                  <Select name="departmentId" defaultValue={editingEmployee.departmentId?.toString()}>
+                  <Select name="departmentId" defaultValue={editingEmployee.departmentId}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select dept" />
                     </SelectTrigger>
                     <SelectContent>
                       {departments?.map(d => (
-                        <SelectItem key={d.id} value={d.id!.toString()}>{d.name}</SelectItem>
+                        <SelectItem key={d.id} value={d.id!}>{d.name}</SelectItem>
                       ))}
                       {!departments?.length && <SelectItem value="0" disabled>No departments defined</SelectItem>}
                     </SelectContent>

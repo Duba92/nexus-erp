@@ -50,20 +50,17 @@ export default function Register() {
       // 2. Local DB Sync
       await db.transaction('rw', [db.companies, db.users], async () => {
         // 1. Create Company
-        const companyId = await db.companies.add({
-          name: formData.companyName,
-          email: '', 
-          createdAt: new Date(),
-        }) as number;
-
+        const companyId = crypto.randomUUID();
         const companyData = {
           id: companyId,
           name: formData.companyName,
-          email: '',
+          email: '', 
           createdAt: new Date(),
         };
+        await db.companies.add(companyData);
 
         const userData = {
+          id: userCredential.user.uid,
           companyId,
           fullName: formData.fullName,
           phone: normalizedPhone,
@@ -78,7 +75,7 @@ export default function Register() {
         await db.users.add(userData);
 
         // 3. Sync to Firestore for multi-device login
-        await setDoc(doc(firestore, 'companies', companyId.toString()), {
+        await setDoc(doc(firestore, 'companies', companyId), {
           ...companyData,
           createdAt: serverTimestamp(),
         });

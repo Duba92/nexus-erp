@@ -85,7 +85,7 @@ export default function POS() {
     });
   };
 
-  const updateQuantity = (id: number, delta: number) => {
+  const updateQuantity = (id: string, delta: number) => {
     setCart(prev => prev.map(item => {
       if (item.id === id) {
         const newQty = Math.max(0, item.cartQuantity + delta);
@@ -99,13 +99,13 @@ export default function POS() {
     }).filter(item => item.cartQuantity > 0));
   };
 
-  const updatePrice = (id: number, price: number) => {
+  const updatePrice = (id: string, price: number) => {
     setCart(prev => prev.map(item => 
       item.id === id ? { ...item, sellingPrice: price } : item
     ));
   };
 
-  const removeFromCart = (id: number) => {
+  const removeFromCart = (id: string) => {
     setCart(prev => prev.filter(item => item.id !== id));
   };
 
@@ -115,10 +115,13 @@ export default function POS() {
   const handleCheckout = async () => {
     if (!currentCompany || !currentUser) return;
 
+    const saleId = crypto.randomUUID();
+
     try {
       await db.transaction('rw', [db.sales, db.saleItems, db.products, db.transactions], async () => {
         // 1. Create Sale
-        const saleId = await db.sales.add({
+        await db.sales.add({
+          id: saleId,
           companyId: currentCompany.id!,
           userId: currentUser.id!,
           date: new Date(),
@@ -127,11 +130,12 @@ export default function POS() {
           discount: 0,
           paymentMethod,
           createdAt: new Date(),
-        }) as number;
+        });
 
         // 2. Create Sale Items and update Product stock
         for (const item of cart) {
           await db.saleItems.add({
+            id: crypto.randomUUID(),
             saleId,
             productId: item.id!,
             quantity: item.cartQuantity,
@@ -146,11 +150,12 @@ export default function POS() {
 
         // 3. Record Accounting Transaction
         await db.transactions.add({
+          id: crypto.randomUUID(),
           companyId: currentCompany.id!,
           type: 'INCOME',
           category: 'Sales Revenue',
           amount: total,
-          description: `Sale #${saleId}`,
+          description: `Sale #${saleId.slice(0, 8)}`,
           date: new Date(),
           referenceId: saleId,
           referenceType: 'SALE'

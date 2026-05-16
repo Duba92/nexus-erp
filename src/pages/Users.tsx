@@ -44,12 +44,12 @@ export default function Users() {
     u.phone.toLowerCase().includes(search.toLowerCase())
   );
 
-  const getCompanyName = (companyId?: number) => {
+  const getCompanyName = (companyId?: string) => {
     if (!companyId) return 'System';
     return companies?.find(c => c.id === companyId)?.name || 'Unknown';
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {
     if (id === currentUser.id) {
       toast.error('Cannot delete your own account');
       return;

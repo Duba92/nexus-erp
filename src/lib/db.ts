@@ -1,7 +1,7 @@
 import Dexie, { type Table } from 'dexie';
 
 export interface Company {
-  id?: number;
+  id?: string;
   name: string;
   logo?: string;
   phone?: string;
@@ -13,8 +13,8 @@ export interface Company {
 }
 
 export interface User {
-  id?: number;
-  companyId?: number; // Null for Super Admin
+  id?: string;
+  companyId?: string; // Null for Super Admin
   fullName: string;
   email: string;
   passwordHash: string;
@@ -23,13 +23,13 @@ export interface User {
   phone: string;
   address?: string;
   salary?: number;
-  departmentId?: number;
+  departmentId?: string;
   createdAt: Date;
 }
 
 export interface Loan {
-  id?: number;
-  companyId: number;
+  id?: string;
+  companyId: string;
   borrowerName: string;
   phone?: string;
   amount: number;
@@ -42,18 +42,18 @@ export interface Loan {
 }
 
 export interface Department {
-  id?: number;
-  companyId: number;
+  id?: string;
+  companyId: string;
   name: string;
   description?: string;
 }
 
 export interface Product {
-  id?: number;
-  companyId: number;
+  id?: string;
+  companyId: string;
   name: string;
-  categoryId?: number;
-  supplierId?: number;
+  categoryId?: string;
+  supplierId?: string;
   description?: string;
   quantity: number;
   lowStockThreshold: number;
@@ -64,14 +64,14 @@ export interface Product {
 }
 
 export interface Category {
-  id?: number;
-  companyId: number;
+  id?: string;
+  companyId: string;
   name: string;
 }
 
 export interface Supplier {
-  id?: number;
-  companyId: number;
+  id?: string;
+  companyId: string;
   name: string;
   phone?: string;
   email?: string;
@@ -79,9 +79,9 @@ export interface Supplier {
 }
 
 export interface Sale {
-  id?: number;
-  companyId: number;
-  userId: number; // Cashier
+  id?: string;
+  companyId: string;
+  userId: string; // Cashier
   date: Date;
   total: number;
   tax: number;
@@ -92,47 +92,47 @@ export interface Sale {
 }
 
 export interface SaleItem {
-  id?: number;
-  saleId: number;
-  productId: number;
+  id?: string;
+  saleId: string;
+  productId: string;
   quantity: number;
   unitPrice: number;
   totalPrice: number;
 }
 
 export interface Purchase {
-  id?: number;
-  companyId: number;
-  supplierId: number;
+  id?: string;
+  companyId: string;
+  supplierId: string;
   date: Date;
   total: number;
   paymentMethod: 'CASH' | 'BANK' | 'MOBILE';
 }
 
 export interface PurchaseItem {
-  id?: number;
-  purchaseId: number;
-  productId: number;
+  id?: string;
+  purchaseId: string;
+  productId: string;
   quantity: number;
   costPrice: number;
 }
 
 export interface Transaction {
-  id?: number;
-  companyId: number;
+  id?: string;
+  companyId: string;
   type: 'INCOME' | 'EXPENSE';
   category: string;
   amount: number;
   description?: string;
   date: Date;
-  referenceId?: number; // Sale ID or Purchase ID
+  referenceId?: string; // Sale ID or Purchase ID
   referenceType?: 'SALE' | 'PURCHASE' | 'OTHER';
 }
 
 export interface Attendance {
-  id?: number;
-  employeeId: number;
-  companyId: number;
+  id?: string;
+  employeeId: string;
+  companyId: string;
   date: Date;
   checkIn: Date;
   checkOut?: Date;
@@ -155,21 +155,21 @@ export class HulleeDatabase extends Dexie {
   loans!: Table<Loan>;
 
   constructor() {
-    super('HulleePOS_DB');
+    super('HulleePOS_DB_v3');
     this.version(1).stores({
-      companies: '++id, name, email',
-      users: '++id, companyId, phone, role',
-      departments: '++id, companyId, name',
-      products: '++id, companyId, name, categoryId, supplierId',
-      categories: '++id, companyId, name',
-      suppliers: '++id, companyId, name',
-      sales: '++id, companyId, userId, date',
-      saleItems: '++id, saleId, productId',
-      purchases: '++id, companyId, supplierId, date',
-      purchaseItems: '++id, purchaseId, productId',
-      transactions: '++id, companyId, type, category, date',
-      attendance: '++id, employeeId, companyId, date',
-      loans: '++id, companyId, borrowerName, type, status'
+      companies: 'id, name, email',
+      users: 'id, companyId, phone, role',
+      departments: 'id, companyId, name',
+      products: 'id, companyId, name, categoryId, supplierId',
+      categories: 'id, companyId, name',
+      suppliers: 'id, companyId, name',
+      sales: 'id, companyId, userId, date',
+      saleItems: 'id, saleId, productId',
+      purchases: 'id, companyId, supplierId, date',
+      purchaseItems: 'id, purchaseId, productId',
+      transactions: 'id, companyId, type, category, date',
+      attendance: 'id, employeeId, companyId, date',
+      loans: 'id, companyId, borrowerName, type, status'
     });
   }
 }
@@ -181,7 +181,9 @@ async function bootstrap() {
   const superAdminPhone = '251992932031';
   const superAdmin = await db.users.where('phone').equals(superAdminPhone).first();
   if (!superAdmin) {
+    const adminId = 'super-admin-1';
     await db.users.add({
+      id: adminId,
       fullName: 'Super Admin',
       email: 'admin@hullee.com',
       phone: superAdminPhone,

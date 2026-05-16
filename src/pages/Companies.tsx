@@ -78,7 +78,22 @@ import { ScrollArea } from '@/src/components/ui/scroll-area';
         console.warn('Firebase account creation failed', authError);
       }
 
+      const companyId = crypto.randomUUID();
+
+      const adminObj = {
+        id: firebaseUid || crypto.randomUUID(), // Use Firebase UID if available
+        companyId: companyId,
+        fullName: `${formData.get('name')} Admin`,
+        phone: normalizedAdminPhone,
+        email: `${normalizedAdminPhone}@hullee.app`,
+        passwordHash: adminPassword,
+        role: 'COMPANY_ADMIN' as const,
+        permissions: selectedModules,
+        createdAt: new Date(),
+      };
+
       const companyObj = {
+        id: companyId,
         name: formData.get('name') as string,
         email: formData.get('email') as string,
         phone: formData.get('phone') as string,
@@ -88,18 +103,7 @@ import { ScrollArea } from '@/src/components/ui/scroll-area';
         createdAt: new Date(),
       };
 
-      const companyId = await db.companies.add(companyObj) as number;
-
-      const adminObj = {
-        companyId: companyId as number,
-        fullName: `${formData.get('name')} Admin`,
-        phone: normalizedAdminPhone,
-        email: `${normalizedAdminPhone}@hullee.app`,
-        passwordHash: adminPassword,
-        role: 'COMPANY_ADMIN' as const,
-        permissions: selectedModules,
-        createdAt: new Date(),
-      };
+      await db.companies.add(companyObj);
 
       // 2. Create a default admin for this company
       await db.users.add(adminObj);
@@ -156,7 +160,7 @@ import { ScrollArea } from '@/src/components/ui/scroll-area';
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this company? All associated data will be lost.')) {
       await db.companies.delete(id);
       // Clean up linked data in a real app

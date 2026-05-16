@@ -74,6 +74,7 @@ export default function Expenses() {
 
     try {
       await db.transactions.add({
+        id: crypto.randomUUID(),
         companyId: currentCompany.id!,
         type: 'EXPENSE',
         amount,
@@ -81,7 +82,7 @@ export default function Expenses() {
         description,
         date,
         createdAt: new Date(),
-      } as any);
+      });
 
       toast.success('Expense recorded successfully');
       setIsAddOpen(false);
@@ -90,7 +91,7 @@ export default function Expenses() {
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Delete this expense record?')) {
       await db.transactions.delete(id);
       toast.success('Record deleted');
