@@ -40,6 +40,8 @@ import { Plus, Search, Receipt, Trash2, ArrowDownCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { firestore } from '@/src/lib/firebase';
 import { useTranslation } from '@/src/lib/i18n';
 
 export default function Expenses() {
@@ -73,16 +75,29 @@ export default function Expenses() {
     }
 
     try {
-      await db.transactions.add({
-        id: crypto.randomUUID(),
+      const txId = crypto.randomUUID();
+      const txData = {
+        id: txId,
         companyId: currentCompany.id!,
-        type: 'EXPENSE',
+        type: 'EXPENSE' as const,
         amount,
         category,
         description,
         date,
         createdAt: new Date(),
-      });
+      };
+
+      await db.transactions.add(txData);
+
+      // Sync to Firestore
+      try {
+        await setDoc(doc(firestore, 'transactions', txId), {
+          ...txData,
+          createdAt: serverTimestamp(),
+        });
+      } catch (syncError) {
+        console.error('Firestore sync failed', syncError);
+      }
 
       toast.success('Expense recorded successfully');
       setIsAddOpen(false);

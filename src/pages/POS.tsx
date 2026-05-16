@@ -44,6 +44,8 @@ interface CartItem extends Product {
   cartQuantity: number;
 }
 
+import { doc, setDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { firestore } from '@/src/lib/firebase';
 import { useTranslation } from '@/src/lib/i18n';
 
 export default function POS() {
@@ -118,9 +120,11 @@ export default function POS() {
     const saleId = crypto.randomUUID();
 
     try {
+      const batch = writeBatch(firestore);
+
       await db.transaction('rw', [db.sales, db.saleItems, db.products, db.transactions], async () => {
         // 1. Create Sale
-        await db.sales.add({
+        const saleData = {
           id: saleId,
           companyId: currentCompany.id!,
           userId: currentUser.id!,
@@ -130,37 +134,59 @@ export default function POS() {
           discount: 0,
           paymentMethod,
           createdAt: new Date(),
+        };
+        await db.sales.add(saleData);
+        batch.set(doc(firestore, 'sales', saleId), {
+          ...saleData,
+          createdAt: serverTimestamp(),
         });
 
         // 2. Create Sale Items and update Product stock
         for (const item of cart) {
-          await db.saleItems.add({
-            id: crypto.randomUUID(),
+          const itemId = crypto.randomUUID();
+          const saleItemData = {
+            id: itemId,
             saleId,
             productId: item.id!,
             quantity: item.cartQuantity,
             unitPrice: item.sellingPrice,
             totalPrice: item.sellingPrice * item.cartQuantity,
-          });
+          };
+          await db.saleItems.add(saleItemData);
+          batch.set(doc(firestore, 'saleItems', itemId), saleItemData);
 
+          const newQty = item.quantity - item.cartQuantity;
           await db.products.update(item.id!, {
-            quantity: item.quantity - item.cartQuantity
+            quantity: newQty
+          });
+          batch.update(doc(firestore, 'products', item.id!), {
+            quantity: newQty
           });
         }
 
         // 3. Record Accounting Transaction
-        await db.transactions.add({
-          id: crypto.randomUUID(),
+        const txId = crypto.randomUUID();
+        const txData = {
+          id: txId,
           companyId: currentCompany.id!,
-          type: 'INCOME',
+          type: 'INCOME' as const,
           category: 'Sales Revenue',
           amount: total,
           description: `Sale #${saleId.slice(0, 8)}`,
           date: new Date(),
           referenceId: saleId,
-          referenceType: 'SALE'
+          referenceType: 'SALE' as const,
+          createdAt: new Date(),
+        };
+        await db.transactions.add(txData);
+        batch.set(doc(firestore, 'transactions', txId), {
+          ...txData,
+          createdAt: serverTimestamp(),
         });
       });
+
+      // Commit Firestore changes
+      await batch.commit();
 
       toast.success('Checkout successful!');
       setCart([]);

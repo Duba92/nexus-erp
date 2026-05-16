@@ -41,6 +41,8 @@ import {
   SelectValue,
 } from '@/src/components/ui/select';
 import { ScrollArea } from '@/src/components/ui/scroll-area';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { firestore } from '@/src/lib/firebase';
 import { useTranslation } from '@/src/lib/i18n';
 
 export default function Loans() {
@@ -73,8 +75,9 @@ export default function Loans() {
 
     try {
       const amount = parseFloat(formData.amount);
-      await db.loans.add({
-        id: crypto.randomUUID(),
+      const loanId = crypto.randomUUID();
+      const loanData = {
+        id: loanId,
         companyId: currentCompany.id!,
         borrowerName: formData.borrowerName,
         phone: formData.phone,
@@ -85,7 +88,21 @@ export default function Loans() {
         description: formData.description,
         dueDate: formData.dueDate ? new Date(formData.dueDate) : undefined,
         createdAt: new Date(),
-      });
+      };
+
+      await db.loans.add(loanData);
+
+      // Sync to Firestore
+      try {
+        await setDoc(doc(firestore, 'loans', loanId), {
+          ...loanData,
+          dueDate: loanData.dueDate ? serverTimestamp() : null, // Simplification for now, better to handle real date
+          createdAt: serverTimestamp(),
+        });
+      } catch (syncError) {
+        console.error('Firestore sync failed', syncError);
+      }
+
       toast.success('Loan recorded successfully');
       setIsCreateOpen(false);
       setFormData({

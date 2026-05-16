@@ -59,19 +59,40 @@ export default function Login() {
               createdAt: userData.createdAt?.toDate() || new Date(),
             };
 
-            if (user) {
-              // Update local profile with latest from Firestore
-              await db.users.update(user.id!, syncedUserData);
-              user = { ...user, ...syncedUserData };
-            } else {
-              // First time on this device
-              const newUser = { id: firebaseUser.uid, ...syncedUserData };
-              await db.users.add(newUser);
-              user = newUser;
-            }
+              if (user) {
+                // Update local profile with latest from Firestore
+                await db.users.update(user.id!, syncedUserData);
+                user = { ...user, ...syncedUserData };
+              } else {
+                // First time on this device
+                const newUser = { id: firebaseUser.uid, ...syncedUserData };
+                await db.users.add(newUser);
+                user = newUser;
+              }
 
-            // Also sync company data
-            if (user.companyId) {
+              // SYNC ALL COMPANY USERS (EMPLOYEES)
+              const usersQ = query(collection(firestore, 'users'), where('companyId', '==', user.companyId));
+              const usersSnapshot = await getDocs(usersQ);
+              for (const uDoc of usersSnapshot.docs) {
+                const uData = uDoc.data();
+                await db.users.put({
+                  id: uDoc.id,
+                  companyId: uData.companyId,
+                  fullName: uData.fullName,
+                  phone: uData.phone,
+                  email: uData.email,
+                  passwordHash: uData.passwordHash,
+                  role: uData.role,
+                  permissions: uData.permissions,
+                  departmentId: uData.departmentId,
+                  salary: uData.salary,
+                  createdAt: uData.createdAt?.toDate() || new Date(),
+                });
+              }
+
+              // Also sync company data
+              if (user.companyId) {
+
               const companyDoc = await getDoc(doc(firestore, 'companies', user.companyId));
               if (companyDoc.exists()) {
                 const companyData = companyDoc.data();
@@ -87,6 +108,40 @@ export default function Login() {
                 };
                 await db.companies.put(company);
               }
+
+              // SYNC EXTRA COLLECTIONS FOR NEW DEVICE
+              const syncCollections = [
+                'departments', 
+                'products', 
+                'categories', 
+                'suppliers',
+                'loans',
+                'sales',
+                'saleItems',
+                'transactions',
+                'attendance'
+              ];
+              for (const collName of syncCollections) {
+                const q = query(collection(firestore, collName), where('companyId', '==', user.companyId));
+                const snapshot = await getDocs(q);
+                for (const d of snapshot.docs) {
+                  const data = d.data();
+                  // Put into local Dexie
+                  await (db as any)[collName].put({
+                    id: d.id,
+                    ...data,
+                    // If there are dates, convert them back to Date objects
+                    createdAt: data.createdAt?.toDate?.() || data.createdAt?.seconds 
+                      ? new Date(data.createdAt.seconds * 1000) 
+                      : (data.date?.toDate?.() ? data.date.toDate() : new Date()),
+                    date: data.date?.toDate?.() ? data.date.toDate() : (data.date ? new Date(data.date) : undefined),
+                    dueDate: data.dueDate?.toDate?.() ? data.dueDate.toDate() : undefined,
+                    checkIn: data.checkIn?.toDate?.() ? data.checkIn.toDate() : undefined,
+                    checkOut: data.checkOut?.toDate?.() ? data.checkOut.toDate() : undefined,
+                  });
+                }
+              }
+
             }
           }
         } catch (syncError) {

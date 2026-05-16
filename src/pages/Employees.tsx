@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { db, type User, type Department } from '@/src/lib/db';
 import { useAuthStore } from '@/src/store/useAuthStore';
 import { normalizePhone, firestore, createSecondaryAuthUser } from '@/src/lib/firebase';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+
 import { useLiveQuery } from 'dexie-react-hooks';
 import { cn } from '@/src/lib/utils';
 import {
@@ -80,12 +81,25 @@ export default function Employees() {
     if (!currentCompany) return;
     const formData = new FormData(e.currentTarget);
     try {
-      await db.departments.add({
-        id: crypto.randomUUID(),
+      const deptId = crypto.randomUUID();
+      const deptData = {
+        id: deptId,
         companyId: currentCompany.id!,
         name: formData.get('name') as string,
         description: formData.get('description') as string,
-      });
+      };
+      await db.departments.add(deptData);
+      
+      // Sync to Firestore
+      try {
+        await setDoc(doc(firestore, 'departments', deptId), {
+          ...deptData,
+          createdAt: serverTimestamp(),
+        });
+      } catch (syncError) {
+        console.error('Firestore sync failed', syncError);
+      }
+
       toast.success('Department created');
       setIsDeptOpen(false);
     } catch (err) {
@@ -170,7 +184,7 @@ export default function Employees() {
       const phone = formData.get('phone') as string;
       const normalizedPhone = normalizePhone(phone);
       
-      await db.users.update(editingEmployee.id!, {
+      const updatedData = {
         fullName: formData.get('fullName') as string,
         email: formData.get('email') as string,
         role: role,
@@ -178,7 +192,20 @@ export default function Employees() {
         phone: normalizedPhone,
         salary: parseFloat(formData.get('salary') as string),
         departmentId: formData.get('departmentId') as string,
-      });
+      };
+
+      await db.users.update(editingEmployee.id!, updatedData);
+
+      // Sync to Firestore
+      try {
+        await setDoc(doc(firestore, 'users', editingEmployee.id!), {
+          ...editingEmployee,
+          ...updatedData,
+          updatedAt: serverTimestamp(),
+        }, { merge: true });
+      } catch (syncError) {
+        console.error('Firestore sync failed at update employee', syncError);
+      }
 
       toast.success('Employee updated successfully');
       setIsEditOpen(false);
@@ -192,9 +219,18 @@ export default function Employees() {
   const handleDelete = async (id: string) => {
     if (confirm('Deactivate this employee account?')) {
       await db.users.delete(id);
+
+      // Sync to Firestore
+      try {
+        await deleteDoc(doc(firestore, 'users', id));
+      } catch (syncError) {
+        console.error('Firestore sync failed at delete employee', syncError);
+      }
+
       toast.success('Employee removed');
     }
   };
+
 
   return (
     <div className="space-y-6">

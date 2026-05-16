@@ -40,8 +40,10 @@ import {
 import { Plus, Search, Package, Pencil, Trash2, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/src/components/ui/badge';
-
+import { doc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { firestore } from '@/src/lib/firebase';
 import { useTranslation } from '@/src/lib/i18n';
+
 
 export default function Inventory() {
   const { currentUser, currentCompany } = useAuthStore();
@@ -87,8 +89,9 @@ export default function Inventory() {
     }
 
     try {
-      await db.products.add({
-        id: crypto.randomUUID(),
+      const productId = crypto.randomUUID();
+      const productData = {
+        id: productId,
         companyId: currentCompany.id!,
         name,
         quantity,
@@ -97,7 +100,19 @@ export default function Inventory() {
         sellingPrice: 0, // Default to 0, will be asked at POS
         unit,
         createdAt: new Date(),
-      });
+      };
+
+      await db.products.add(productData);
+
+      // Sync to Firestore
+      try {
+        await setDoc(doc(firestore, 'products', productId), {
+          ...productData,
+          createdAt: serverTimestamp(),
+        });
+      } catch (syncError) {
+        console.error('Firestore sync failed', syncError);
+      }
 
       toast.success('Product added successfully');
       setIsAddOpen(false);
@@ -128,13 +143,26 @@ export default function Inventory() {
     }
 
     try {
-      await db.products.update(editingProduct.id!, {
+      const updatedProduct = {
         name,
         quantity,
         lowStockThreshold,
         costPrice,
         unit,
-      });
+      };
+      
+      await db.products.update(editingProduct.id!, updatedProduct);
+
+      // Sync to Firestore
+      try {
+        await setDoc(doc(firestore, 'products', editingProduct.id!), {
+          ...editingProduct,
+          ...updatedProduct,
+          updatedAt: serverTimestamp(),
+        }, { merge: true });
+      } catch (syncError) {
+        console.error('Firestore sync failed at update', syncError);
+      }
 
       toast.success('Product updated successfully');
       setIsEditOpen(false);
@@ -148,9 +176,18 @@ export default function Inventory() {
   const handleDelete = async (id: string) => {
     if (confirm('Delete this product?')) {
       await db.products.delete(id);
+      
+      // Sync to Firestore
+      try {
+        await deleteDoc(doc(firestore, 'products', id));
+      } catch (syncError) {
+        console.error('Firestore sync failed at delete', syncError);
+      }
+
       toast.success('Product deleted');
     }
   };
+
 
   return (
     <div className="space-y-6">

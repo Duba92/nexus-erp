@@ -5,6 +5,7 @@ import { auth, formatPhoneToEmail, normalizePhone } from '@/src/lib/firebase';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { firestore } from '@/src/lib/firebase';
+import { useAuthStore } from '@/src/store/useAuthStore';
 import { Button } from '@/src/components/ui/button';
 import { Input } from '@/src/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/src/components/ui/card';
@@ -47,48 +48,59 @@ export default function Register() {
       const userCredential = await createUserWithEmailAndPassword(auth, firebaseEmail, formData.password);
       await updateProfile(userCredential.user, { displayName: formData.fullName });
 
+      const companyId = crypto.randomUUID();
+      const companyData = {
+        id: companyId,
+        name: formData.companyName,
+        email: '', 
+        createdAt: new Date(),
+      };
+
+      const userData = {
+        id: userCredential.user.uid,
+        companyId,
+        fullName: formData.fullName,
+        phone: normalizedPhone,
+        email: `${normalizedPhone}@hullee.app`,
+        passwordHash: formData.password,
+        role: 'COMPANY_ADMIN' as const,
+        permissions: ['pos', 'inventory', 'hr', 'sales'],
+        createdAt: new Date(),
+      };
+
       // 2. Local DB Sync
-      await db.transaction('rw', [db.companies, db.users], async () => {
-        // 1. Create Company
-        const companyId = crypto.randomUUID();
-        const companyData = {
-          id: companyId,
-          name: formData.companyName,
-          email: '', 
-          createdAt: new Date(),
-        };
-        await db.companies.add(companyData);
+      await db.companies.put(companyData);
+      await db.users.put(userData);
 
-        const userData = {
-          id: userCredential.user.uid,
-          companyId,
-          fullName: formData.fullName,
-          phone: normalizedPhone,
-          email: `${normalizedPhone}@hullee.app`,
-          passwordHash: formData.password,
-          role: 'COMPANY_ADMIN' as const,
-          permissions: ['pos', 'inventory', 'hr', 'sales'],
-          createdAt: new Date(),
-        };
+      // 3. Sync to Firestore for multi-device login (background to avoid blocking)
+      const syncToFirestore = async () => {
+        try {
+          await setDoc(doc(firestore, 'companies', companyId), {
+            ...companyData,
+            createdAt: serverTimestamp(),
+          });
+          
+          await setDoc(doc(firestore, 'users', userCredential.user.uid), {
+            ...userData,
+            firebaseUid: userCredential.user.uid,
+            createdAt: serverTimestamp(),
+          });
+          console.log('Registered and synced to Firestore');
+        } catch (syncError) {
+          console.error('Firestore sync failed at registration', syncError);
+        }
+      };
+      
+      // Start sync but don't await it to block the UI transition
+      syncToFirestore();
 
-        // 2. Create User as COMPANY_ADMIN
-        await db.users.add(userData);
+      // Auto login and navigate
+      const { setAuth } = useAuthStore.getState();
+      setAuth(userData as any, companyData as any);
+      
+      toast.success('Registration successful! Welcome to Hullee.');
+      navigate('/');
 
-        // 3. Sync to Firestore for multi-device login
-        await setDoc(doc(firestore, 'companies', companyId), {
-          ...companyData,
-          createdAt: serverTimestamp(),
-        });
-        
-        await setDoc(doc(firestore, 'users', userCredential.user.uid), {
-          ...userData,
-          firebaseUid: userCredential.user.uid,
-          createdAt: serverTimestamp(),
-        });
-      });
-
-      toast.success('Registration successful! Please login.');
-      navigate('/login');
     } catch (error) {
       toast.error('Registration failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
       console.error(error);
