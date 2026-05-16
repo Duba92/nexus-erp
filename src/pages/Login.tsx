@@ -10,9 +10,8 @@ import { Input } from '@/src/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/src/components/ui/card';
 import { Label } from '@/src/components/ui/label';
 import { toast } from 'sonner';
-import { Building2, Lock, Phone, UserPlus } from 'lucide-react';
+import { Building2, Lock, Phone } from 'lucide-react';
 import { motion } from 'motion/react';
-import { Link } from 'react-router-dom';
 
 export default function Login() {
   const [phone, setPhone] = useState('');
@@ -139,14 +138,6 @@ export default function Login() {
                 <Button type="submit" className="w-full h-11 text-base font-bold" disabled={isLoading}>
                   {isLoading ? 'Checking...' : 'Login'}
                 </Button>
-                <div className="flex flex-col gap-2 w-full">
-                  <Link to="/register" className="w-full">
-                    <Button variant="outline" className="w-full h-11 gap-2">
-                      <UserPlus className="h-4 w-4" />
-                      Register Company
-                    </Button>
-                  </Link>
-                </div>
               </CardFooter>
             )}
           </form>
