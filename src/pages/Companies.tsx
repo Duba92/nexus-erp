@@ -72,10 +72,12 @@ import { ScrollArea } from '@/src/components/ui/scroll-area';
 
       // 1. Create Firebase Auth account for the Admin
       let firebaseUid = '';
+      let authErrorMsg = '';
       try {
         firebaseUid = await createSecondaryAuthUser(normalizedAdminPhone, adminPassword);
-      } catch (authError) {
+      } catch (authError: any) {
         console.warn('Firebase account creation failed', authError);
+        authErrorMsg = authError?.message || '';
       }
 
       const companyId = crypto.randomUUID();
@@ -109,6 +111,7 @@ import { ScrollArea } from '@/src/components/ui/scroll-area';
       await db.users.add(adminObj);
 
       // 3. Sync to Firestore
+      let syncedOnline = false;
       try {
         await setDoc(doc(firestore, 'companies', companyId.toString()), {
           ...companyObj,
@@ -122,12 +125,21 @@ import { ScrollArea } from '@/src/components/ui/scroll-area';
             firebaseUid,
             createdAt: serverTimestamp(),
           });
+          syncedOnline = true;
         }
       } catch (syncError) {
         console.error('Firestore sync failed', syncError);
       }
 
-      toast.success('Company and Admin account created');
+      if (syncedOnline) {
+        toast.success('Company and Admin account registered successfully both locally and on Cloud Auth.');
+      } else {
+        toast.warning(
+          authErrorMsg 
+            ? `Company created locally. Cloud Auth sync pending (Reason: ${authErrorMsg}).` 
+            : 'Company created locally. Cloud Auth sync pending (Local Offline Mode).'
+        );
+      }
       setIsCreateOpen(false);
     } catch (err) {
       toast.error('Failed to create company: ' + (err instanceof Error ? err.message : 'Unknown error'));

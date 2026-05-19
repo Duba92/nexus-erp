@@ -46,14 +46,14 @@ export default defineConfig(({mode}) => {
               name: 'POS',
               short_name: 'POS',
               description: 'Open Point of Sale',
-              url: '/pos',
+              url: '/#/pos',
               icons: [{ src: 'icon.svg', sizes: '192x192' }]
             },
             {
               name: 'Inventory',
               short_name: 'Inv',
               description: 'Check Inventory',
-              url: '/inventory',
+              url: '/#/inventory',
               icons: [{ src: 'icon.svg', sizes: '192x192' }]
             }
           ]

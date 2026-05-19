@@ -139,12 +139,12 @@ export default function Employees() {
       
       // 1. Create Firebase Auth User (Secondary)
       let firebaseUid = '';
+      let authErrorMsg = '';
       try {
         firebaseUid = await createSecondaryAuthUser(normalizedPhone, password);
-      } catch (authError) {
+      } catch (authError: any) {
         console.warn('Firebase user creation failed (account might already exist)', authError);
-        // We can't easily get the UID if it exists, so we proceed and 
-        // local ID will be used or sync might fail if trying to overwrite
+        authErrorMsg = authError?.message || '';
       }
 
       const employeeId = firebaseUid || crypto.randomUUID();
@@ -166,17 +166,27 @@ export default function Employees() {
       await db.users.add(employeeData);
 
       // 3. Sync to Firestore
+      let syncedOnline = false;
       try {
         await setDoc(doc(firestore, 'users', employeeId), {
           ...employeeData,
           firebaseUid: employeeId,
           createdAt: serverTimestamp(),
         });
+        syncedOnline = true;
       } catch (syncError) {
         console.error('Firestore sync failed', syncError);
       }
 
-      toast.success('Employee registered successfully');
+      if (syncedOnline) {
+        toast.success(`Employee "${employeeData.fullName}" registered successfully both locally and on Cloud Auth.`);
+      } else {
+        toast.warning(
+          authErrorMsg 
+            ? `Employee "${employeeData.fullName}" registered locally. Cloud Auth sync pending (Reason: ${authErrorMsg}).` 
+            : `Employee "${employeeData.fullName}" registered locally. Cloud Auth sync pending.`
+        );
+      }
       setSelectedPermissions(['pos']);
       setIsAddOpen(false);
     } catch (err) {

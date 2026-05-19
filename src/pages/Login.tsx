@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { db } from '@/src/lib/db';
 import { auth, formatPhoneToEmail, normalizePhone } from '@/src/lib/firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, getDoc, collection, query, where, getDocs, serverTimestamp, setDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, serverTimestamp, setDoc, deleteDoc } from 'firebase/firestore';
 import { firestore } from '@/src/lib/firebase';
 import { useAuthStore } from '@/src/store/useAuthStore';
 import { cn } from '@/src/lib/utils';
@@ -64,6 +64,12 @@ export default function Login() {
                         firebaseUid: firebaseUser.uid,
                         updatedAt: serverTimestamp()
                       });
+                      try {
+                        await deleteDoc(doc(firestore, 'users', uDoc.id));
+                        console.log('Self-healing: Cleared stale duplicate user doc:', uDoc.id);
+                      } catch (delErr) {
+                        console.warn('Self-healing warning: could not delete stale duplicate doc:', delErr);
+                      }
                     } else {
                       await setDoc(doc(firestore, 'users', firebaseUser.uid), {
                         ...uData,
