@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { db, type Company } from '@/src/lib/db';
 import { useAuthStore } from '@/src/store/useAuthStore';
 import { normalizePhone, firestore, createSecondaryAuthUser } from '@/src/lib/firebase';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
   Card,
@@ -73,11 +73,27 @@ import { ScrollArea } from '@/src/components/ui/scroll-area';
       // 1. Create Firebase Auth account for the Admin
       let firebaseUid = '';
       let authErrorMsg = '';
+
+      // Pre-emptive lookup: if their document already exists in Firestore under this phone number, reuse their UID.
       try {
-        firebaseUid = await createSecondaryAuthUser(normalizedAdminPhone, adminPassword);
-      } catch (authError: any) {
-        console.warn('Firebase account creation failed', authError);
-        authErrorMsg = authError?.message || '';
+        const { collection: fsCol, query: fsQ, where: fsW, getDocs: fsDocs } = await import('firebase/firestore');
+        const q = fsQ(fsCol(firestore, 'users'), fsW('phone', '==', normalizedAdminPhone));
+        const snap = await fsDocs(q);
+        if (!snap.empty) {
+          firebaseUid = snap.docs[0].id;
+          console.log('Pre-emptive check: Company Admin exists in Firestore. Reusing UID:', firebaseUid);
+        }
+      } catch (dbErr) {
+        console.warn('Pre-emptive Firestore lookup failed for admin:', dbErr);
+      }
+
+      if (!firebaseUid) {
+        try {
+          firebaseUid = await createSecondaryAuthUser(normalizedAdminPhone, adminPassword);
+        } catch (authError: any) {
+          console.warn('Firebase account creation failed', authError);
+          authErrorMsg = authError?.message || '';
+        }
       }
 
       const companyId = crypto.randomUUID();
@@ -174,9 +190,14 @@ import { ScrollArea } from '@/src/components/ui/scroll-area';
 
   const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this company? All associated data will be lost.')) {
-      await db.companies.delete(id);
-      // Clean up linked data in a real app
-      toast.success('Company deleted');
+      try {
+        await db.companies.delete(id);
+        await deleteDoc(doc(firestore, 'companies', id));
+        toast.success('Company deleted successfully from local database and Cloud Firestore');
+      } catch (error) {
+        console.error('Failed to sync delete company:', error);
+        toast.success('Company deleted locally');
+      }
     }
   };
 

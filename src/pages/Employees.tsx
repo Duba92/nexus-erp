@@ -140,11 +140,27 @@ export default function Employees() {
       // 1. Create Firebase Auth User (Secondary)
       let firebaseUid = '';
       let authErrorMsg = '';
+
+      // Pre-emptive lookup: if their document already exists in Firestore under this phone number, reuse their UID.
       try {
-        firebaseUid = await createSecondaryAuthUser(normalizedPhone, password);
-      } catch (authError: any) {
-        console.warn('Firebase user creation failed (account might already exist)', authError);
-        authErrorMsg = authError?.message || '';
+        const { collection: fsCol, query: fsQ, where: fsW, getDocs: fsDocs } = await import('firebase/firestore');
+        const q = fsQ(fsCol(firestore, 'users'), fsW('phone', '==', normalizedPhone));
+        const snap = await fsDocs(q);
+        if (!snap.empty) {
+          firebaseUid = snap.docs[0].id;
+          console.log('Pre-emptive check: Employee exists in Firestore. Reusing UID:', firebaseUid);
+        }
+      } catch (dbErr) {
+        console.warn('Pre-emptive Firestore lookup failed:', dbErr);
+      }
+
+      if (!firebaseUid) {
+        try {
+          firebaseUid = await createSecondaryAuthUser(normalizedPhone, password);
+        } catch (authError: any) {
+          console.warn('Firebase user creation failed (account might already exist)', authError);
+          authErrorMsg = authError?.message || '';
+        }
       }
 
       const employeeId = firebaseUid || crypto.randomUUID();

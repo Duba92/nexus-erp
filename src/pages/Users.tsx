@@ -3,6 +3,8 @@ import { db } from '@/src/lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useAuthStore } from '@/src/store/useAuthStore';
 import { useTranslation } from '@/src/lib/i18n';
+import { doc, deleteDoc } from 'firebase/firestore';
+import { firestore } from '@/src/lib/firebase';
 import {
   Card,
   CardContent,
@@ -55,8 +57,14 @@ export default function Users() {
       return;
     }
     if (confirm('Delete this user?')) {
-      await db.users.delete(id);
-      toast.success('User deleted');
+      try {
+        await db.users.delete(id);
+        await deleteDoc(doc(firestore, 'users', id));
+        toast.success('User deleted successfully from local database and Cloud Firestore');
+      } catch (error) {
+        console.error('Failed to sync delete user:', error);
+        toast.success('User deleted locally');
+      }
     }
   };
 

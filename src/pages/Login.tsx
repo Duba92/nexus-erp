@@ -110,15 +110,12 @@ export default function Login() {
           if (userDoc.exists()) {
             const userData = userDoc.data();
             const syncedUserData = {
-              companyId: userData.companyId,
-              fullName: userData.fullName,
-              phone: userData.phone,
-              email: userData.email,
+              ...userData,
+              id: firebaseUser.uid,
               passwordHash: userData.passwordHash || password, // Fallback to provided password if hash is missing
-              role: userData.role,
-              permissions: userData.permissions,
-              createdAt: userData.createdAt?.toDate?.() || new Date(),
-            };
+              createdAt: userData.createdAt?.toDate?.() || (userData.createdAt ? new Date(userData.createdAt.seconds * 1000) : new Date()),
+              updatedAt: userData.updatedAt?.toDate?.() || (userData.updatedAt ? new Date(userData.updatedAt.seconds * 1000) : undefined),
+            } as any;
 
             if (user) {
               await db.users.update(user.id!, syncedUserData);
@@ -130,7 +127,6 @@ export default function Login() {
             }
           } else {
             // Handle case where Auth exists but Firestore record is missing (Bootstrap/Repair)
-            // If the phone matches super admin, we can bootstrap it locally and in Firestore
             if (normalizedPhone === '251992932031') {
               console.log('Bootstrapping Super Admin profile locally and in Firestore');
               const superAdminData = {
@@ -157,6 +153,52 @@ export default function Login() {
                 firebaseUid: firebaseUser.uid,
                 createdAt: serverTimestamp(),
               });
+            } else {
+              // Self-healing check for standard company admins or employees
+              try {
+                const uQuery = query(collection(firestore, 'users'), where('phone', '==', normalizedPhone));
+                const uSnapshot = await getDocs(uQuery);
+                if (!uSnapshot.empty) {
+                  const uDoc = uSnapshot.docs[0];
+                  const uData = uDoc.data();
+                  
+                  if (uData.passwordHash === password) {
+                    console.log('Self-healing standard user document: reparenting to correct firebaseUid...');
+                    const healedUserData = {
+                      ...uData,
+                      id: firebaseUser.uid,
+                      firebaseUid: firebaseUser.uid,
+                      updatedAt: serverTimestamp(),
+                    };
+                    
+                    await setDoc(doc(firestore, 'users', firebaseUser.uid), healedUserData);
+                    
+                    try {
+                      await deleteDoc(doc(firestore, 'users', uDoc.id));
+                      console.log('Self-healing cleaned up mismatched doc ID:', uDoc.id);
+                    } catch (delErr) {
+                      console.warn('Could not delete old mismatched doc:', delErr);
+                    }
+                    
+                    const syncedUserData: any = {
+                      ...healedUserData,
+                      createdAt: uData.createdAt?.toDate?.() || new Date(),
+                      updatedAt: new Date(),
+                    };
+                    
+                    if (user) {
+                      await db.users.update(user.id!, syncedUserData);
+                      user = { ...user, ...syncedUserData } as any;
+                    } else {
+                      const newUser = { id: firebaseUser.uid, ...syncedUserData } as any;
+                      await db.users.add(newUser);
+                      user = newUser;
+                    }
+                  }
+                }
+              } catch (repairErr) {
+                console.error('Failed to run standard self-healing during login:', repairErr);
+              }
             }
           }
 
