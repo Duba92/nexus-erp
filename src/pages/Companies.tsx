@@ -154,22 +154,10 @@ import { ScrollArea } from '@/src/components/ui/scroll-area';
         }
       }
 
-      if (syncedOnline) {
-        toast.success(`Company "${companyObj.name}" and Admin account registered successfully both locally and on Cloud Auth.`);
-      } else if (!navigator.onLine) {
-        toast.info(`Company "${companyObj.name}" created locally in offline mode. It will automatically sync when you connect to the internet.`);
-      } else {
-        toast.warning(
-          authErrorMsg 
-            ? `Company created locally. Cloud Auth sync pending (Reason: ${authErrorMsg}).` 
-            : 'Company created locally. Cloud Auth sync pending (Local Offline Mode).'
-        );
-      }
       formElement.reset();
       setIsCreateOpen(false);
     } catch (err) {
-      toast.error('Failed to create company: ' + (err instanceof Error ? err.message : 'Unknown error'));
-      console.error(err);
+      console.error('Failed to create company:', err);
     }
   };
 

@@ -205,22 +205,11 @@ export default function Employees() {
         }
       }
 
-      if (syncedOnline) {
-        toast.success(`Employee "${employeeData.fullName}" registered successfully both locally and on Cloud Auth.`);
-      } else if (!navigator.onLine) {
-        toast.info(`Employee "${employeeData.fullName}" registered locally (Offline Mode). It will automatically sync when you connect to the internet.`);
-      } else {
-        toast.warning(
-          authErrorMsg 
-            ? `Employee "${employeeData.fullName}" registered locally. Cloud Auth sync pending (Reason: ${authErrorMsg}).` 
-            : `Employee "${employeeData.fullName}" registered locally. Cloud Auth sync pending.`
-        );
-      }
       formElement.reset();
       setSelectedPermissions(['pos']);
       setIsAddOpen(false);
     } catch (err) {
-      toast.error('Failed to register employee');
+      console.error('Failed to register employee:', err);
     }
   };
 
