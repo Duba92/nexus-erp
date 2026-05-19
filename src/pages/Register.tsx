@@ -44,10 +44,34 @@ export default function Register() {
       const normalizedPhone = normalizePhone(formData.phone);
       const phoneEmail = formatPhoneToEmail(normalizedPhone);
       
-      // 1. Firebase Auth Registration
-      // We rely on Auth's email uniqueness for the phone-to-email mapping
-      const userCredential = await createUserWithEmailAndPassword(auth, phoneEmail, formData.password);
-      await updateProfile(userCredential.user, { displayName: formData.fullName });
+      let userUid: string = crypto.randomUUID(); // Default unique local ID
+      let registeredOnline = false;
+
+      // Check if online to register with Firebase Auth
+      if (navigator.onLine) {
+        try {
+          // 1. Firebase Auth Registration
+          const userCredential = await createUserWithEmailAndPassword(auth, phoneEmail, formData.password);
+          await updateProfile(userCredential.user, { displayName: formData.fullName });
+          userUid = userCredential.user.uid;
+          registeredOnline = true;
+        } catch (authError: any) {
+          console.warn('Firebase Auth registration failed, checking if we should fallback to offline', authError);
+          if (authError.code === 'auth/email-already-in-use') {
+            toast.error('This phone number is already registered. Please login instead.');
+            setIsLoading(false);
+            return;
+          }
+          // If it is a network or firebase auth error, fallback to offline registration
+          if (authError.code === 'auth/network-request-failed' || !navigator.onLine) {
+            toast.info('Offline mode: Registering account locally on this device.');
+          } else {
+            throw authError; // For other issues like weak password, etc.
+          }
+        }
+      } else {
+        toast.info('No internet connection. Registering account locally on this device.');
+      }
 
       const companyId = crypto.randomUUID();
       const companyData = {
@@ -58,43 +82,48 @@ export default function Register() {
       };
 
       const userData = {
-        id: userCredential.user.uid,
+        id: userUid,
         companyId,
         fullName: formData.fullName,
         phone: normalizedPhone,
         email: phoneEmail,
         passwordHash: formData.password,
         role: 'COMPANY_ADMIN' as const,
-        permissions: ['pos', 'inventory', 'hr', 'sales'],
+        permissions: ['pos', 'inventory', 'hr', 'sales', 'loans', 'purchases', 'transactions', 'attendance', 'all'],
         createdAt: new Date(),
       };
 
-      // 2. Local DB Sync
+      // 2. Local DB Sync (offline source of truth)
       await db.companies.put(companyData);
       await db.users.put(userData);
 
-      // 3. Sync to Firestore (Mandatory for multi-device login)
-      try {
-        await setDoc(doc(firestore, 'companies', companyId), {
-          ...companyData,
-          createdAt: serverTimestamp(),
-        });
-        
-        await setDoc(doc(firestore, 'users', userCredential.user.uid), {
-          ...userData,
-          firebaseUid: userCredential.user.uid,
-          createdAt: serverTimestamp(),
-        });
-      } catch (syncError) {
-        console.error('Firestore sync failed at registration', syncError);
-        // We continue because local DB has the state, but this means multi-device might be delayed
+      // 3. Sync to Firestore (Mandatory for multi-device login) if online
+      if (registeredOnline) {
+        try {
+          await setDoc(doc(firestore, 'companies', companyId), {
+            ...companyData,
+            createdAt: serverTimestamp(),
+          });
+          
+          await setDoc(doc(firestore, 'users', userUid), {
+            ...userData,
+            firebaseUid: userUid,
+            createdAt: serverTimestamp(),
+          });
+        } catch (syncError) {
+          console.error('Firestore sync failed at registration', syncError);
+          // We continue since local DB is ready and has the state
+        }
       }
 
       // Auto login and navigate
       const { setAuth } = useAuthStore.getState();
       setAuth(userData as any, companyData as any);
       
-      toast.success('Registration successful! Welcome to Hullee.');
+      toast.success(registeredOnline 
+        ? 'Registration successful! Welcome to Hullee.' 
+        : 'Registration successful locally (Offline Mode)! Welcome to Hullee.'
+      );
       
       // Slight delay to allow toast to be seen
       setTimeout(() => {

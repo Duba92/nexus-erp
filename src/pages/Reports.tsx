@@ -153,7 +153,7 @@ export default function Reports() {
         <Card className="bg-primary/5 border-primary/20">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center justify-between">
-              Net Balance
+              {t('net_profit')}
               <PieChart className="h-4 w-4 text-primary" />
             </CardTitle>
           </CardHeader>

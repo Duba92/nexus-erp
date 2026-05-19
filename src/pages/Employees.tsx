@@ -116,9 +116,20 @@ export default function Employees() {
 
   const handleAddEmployee = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!currentCompany) return;
+    if (!currentCompany && currentUser?.role !== 'SUPER_ADMIN') {
+      toast.error('Please log in with a company context or assign a company.');
+      return;
+    }
 
     const formData = new FormData(e.currentTarget);
+    const targetCompanyId = currentUser?.role === 'SUPER_ADMIN'
+      ? (formData.get('companyId') as string)
+      : currentCompany?.id!;
+
+    if (!targetCompanyId) {
+      toast.error('Company assignment is required');
+      return;
+    }
     
     try {
       const role = formData.get('role') as any || 'EMPLOYEE';
@@ -139,7 +150,7 @@ export default function Employees() {
       const employeeId = firebaseUid || crypto.randomUUID();
       const employeeData = {
         id: employeeId,
-        companyId: currentCompany.id!,
+        companyId: targetCompanyId,
         fullName: formData.get('fullName') as string,
         email: `${normalizedPhone}@hullee.app`,
         passwordHash: password,
@@ -175,7 +186,8 @@ export default function Employees() {
 
   const handleUpdateEmployee = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!editingEmployee || !currentCompany) return;
+    if (!editingEmployee) return;
+    if (!currentCompany && currentUser?.role !== 'SUPER_ADMIN') return;
 
     const formData = new FormData(e.currentTarget);
     
@@ -284,6 +296,21 @@ export default function Employees() {
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4 sm:grid-cols-2">
+                {currentUser?.role === 'SUPER_ADMIN' && (
+                  <div className="grid gap-2 sm:col-span-2">
+                    <Label htmlFor="companyId">Company Context</Label>
+                    <Select name="companyId">
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select target company" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {allCompanies?.map(c => (
+                          <SelectItem key={c.id} value={c.id!}>{c.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <div className="grid gap-2 sm:col-span-2">
                   <Label htmlFor="fullName">{t('name')}</Label>
                   <Input id="fullName" name="fullName" required />

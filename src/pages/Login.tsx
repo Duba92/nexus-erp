@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '@/src/lib/db';
 import { auth, formatPhoneToEmail, normalizePhone } from '@/src/lib/firebase';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, getDoc, collection, query, where, getDocs, serverTimestamp, setDoc } from 'firebase/firestore';
 import { firestore } from '@/src/lib/firebase';
 import { useAuthStore } from '@/src/store/useAuthStore';
 import { cn } from '@/src/lib/utils';
@@ -29,14 +29,69 @@ export default function Login() {
 
     try {
       const normalizedPhone = normalizePhone(phone);
-      // 1. Firebase Auth Sign In
+      // 1. Firebase Auth Sign In / Fallbacks
       const firebaseEmail = formatPhoneToEmail(normalizedPhone);
       let firebaseUser = null;
-      try {
-        const userCredential = await signInWithEmailAndPassword(auth, firebaseEmail, password);
-        firebaseUser = userCredential.user;
-      } catch (fError) {
-        console.warn('Firebase login failed, checking local DB (offline fallback)', fError);
+      
+      if (navigator.onLine) {
+        try {
+          const userCredential = await signInWithEmailAndPassword(auth, firebaseEmail, password);
+          firebaseUser = userCredential.user;
+        } catch (fError: any) {
+          console.warn('Firebase login failed, checking for self-healing, super admin, or offline bypass', fError);
+          
+          if (fError.code === 'auth/user-not-found' || fError.code === 'auth/invalid-credential') {
+            // Self-healing: Look up matching user in Firestore by phone
+            try {
+              const uQuery = query(collection(firestore, 'users'), where('phone', '==', normalizedPhone));
+              const uSnapshot = await getDocs(uQuery);
+              if (!uSnapshot.empty) {
+                const uDoc = uSnapshot.docs[0];
+                const uData = uDoc.data();
+                
+                // If password matches the persistent hash, repair their credentials on-the-fly
+                if (uData.passwordHash === password) {
+                  console.log('Self-healing auth: matched credentials in Firestore, registering Auth user globally...');
+                  try {
+                    const userCredential = await createUserWithEmailAndPassword(auth, firebaseEmail, password);
+                    firebaseUser = userCredential.user;
+                    
+                    // Reparent or merge database record so standard doc ID matches their new firebase UID
+                    if (uDoc.id !== firebaseUser.uid) {
+                      await setDoc(doc(firestore, 'users', firebaseUser.uid), {
+                        ...uData,
+                        id: firebaseUser.uid,
+                        firebaseUid: firebaseUser.uid,
+                        updatedAt: serverTimestamp()
+                      });
+                    } else {
+                      await setDoc(doc(firestore, 'users', firebaseUser.uid), {
+                        ...uData,
+                        firebaseUid: firebaseUser.uid,
+                        updatedAt: serverTimestamp()
+                      }, { merge: true });
+                    }
+                  } catch (repairError) {
+                    console.error('Failed to self-heal user credentials on Firebase Auth:', repairError);
+                  }
+                }
+              }
+            } catch (dbError) {
+              console.error('Self-healing query error:', dbError);
+            }
+          }
+          
+          // Special fallback: dynamically create Super Admin online if missing
+          if (normalizedPhone === '251992932031' && password === '341256' && (!firebaseUser)) {
+            try {
+              const userCredential = await createUserWithEmailAndPassword(auth, firebaseEmail, password);
+              firebaseUser = userCredential.user;
+              console.log('Super Admin online account auto-created during login bootstrap');
+            } catch (regError) {
+              console.error('Dynamic Super Admin creation failed:', regError);
+            }
+          }
+        }
       }
 
       // 2. Fetch/Update Local DB from Firestore if online and authenticated
@@ -53,7 +108,7 @@ export default function Login() {
               fullName: userData.fullName,
               phone: userData.phone,
               email: userData.email,
-              passwordHash: userData.passwordHash,
+              passwordHash: userData.passwordHash || password, // Fallback to provided password if hash is missing
               role: userData.role,
               permissions: userData.permissions,
               createdAt: userData.createdAt?.toDate?.() || new Date(),
@@ -69,16 +124,16 @@ export default function Login() {
             }
           } else {
             // Handle case where Auth exists but Firestore record is missing (Bootstrap/Repair)
-            // If the phone matches super admin, we can bootstrap it locally
+            // If the phone matches super admin, we can bootstrap it locally and in Firestore
             if (normalizedPhone === '251992932031') {
-              console.log('Bootstrapping Super Admin profile locally');
+              console.log('Bootstrapping Super Admin profile locally and in Firestore');
               const superAdminData = {
                 id: firebaseUser.uid,
                 companyId: undefined,
                 fullName: 'Super Admin',
                 phone: normalizedPhone,
                 email: firebaseEmail,
-                passwordHash: password, // Store provided password as hash for local fallback
+                passwordHash: password, // Store provided password as hash for local offline fallback
                 role: 'SUPER_ADMIN' as const,
                 permissions: ['all'],
                 createdAt: new Date(),
@@ -99,8 +154,45 @@ export default function Login() {
             }
           }
 
-          // SYNC ALL COMPANY USERS (EMPLOYEES) - Important for HR module to work on all devices
-          if (user && user.companyId) {
+          // SYNC DATA BASED ON USER ROLE TYPE
+          if (user && user.role === 'SUPER_ADMIN') {
+            // Super Admin needs to sync all companies and all users
+            console.log('Super Admin syncing all company profiles and all user accounts across devices...');
+            
+            const companiesSnapshot = await getDocs(collection(firestore, 'companies'));
+            for (const cDoc of companiesSnapshot.docs) {
+              const cData = cDoc.data();
+              await db.companies.put({
+                id: cDoc.id,
+                name: cData.name,
+                email: cData.email,
+                phone: cData.phone,
+                address: cData.address,
+                taxId: cData.taxId,
+                allowedModules: cData.allowedModules,
+                createdAt: cData.createdAt?.toDate?.() || new Date(),
+              });
+            }
+
+            const usersSnapshot = await getDocs(collection(firestore, 'users'));
+            for (const uDoc of usersSnapshot.docs) {
+              const uData = uDoc.data();
+              await db.users.put({
+                id: uDoc.id,
+                companyId: uData.companyId,
+                fullName: uData.fullName,
+                phone: uData.phone,
+                email: uData.email,
+                passwordHash: uData.passwordHash,
+                role: uData.role,
+                permissions: uData.permissions,
+                departmentId: uData.departmentId,
+                salary: uData.salary,
+                createdAt: uData.createdAt?.toDate?.() || new Date(),
+              });
+            }
+          } else if (user && user.companyId) {
+            // Standard user / admin: Sync all company users
             const usersQ = query(collection(firestore, 'users'), where('companyId', '==', user.companyId));
             const usersSnapshot = await getDocs(usersQ);
             for (const uDoc of usersSnapshot.docs) {
@@ -119,57 +211,55 @@ export default function Login() {
                 createdAt: uData.createdAt?.toDate?.() || new Date(),
               });
             }
-          }
 
-          // Also sync company data
-          if (user && user.companyId) {
-              const companyDoc = await getDoc(doc(firestore, 'companies', user.companyId));
-              if (companyDoc.exists()) {
-                const companyData = companyDoc.data();
-                const company = {
-                  id: user.companyId,
-                  name: companyData.name,
-                  email: companyData.email,
-                  phone: companyData.phone,
-                  address: companyData.address,
-                  taxId: companyData.taxId,
-                  allowedModules: companyData.allowedModules,
-                  createdAt: companyData.createdAt?.toDate?.() || new Date(),
-                };
-                await db.companies.put(company);
-              }
+            // Sync company data
+            const companyDoc = await getDoc(doc(firestore, 'companies', user.companyId));
+            if (companyDoc.exists()) {
+              const companyData = companyDoc.data();
+              const company = {
+                id: user.companyId,
+                name: companyData.name,
+                email: companyData.email,
+                phone: companyData.phone,
+                address: companyData.address,
+                taxId: companyData.taxId,
+                allowedModules: companyData.allowedModules,
+                createdAt: companyData.createdAt?.toDate?.() || new Date(),
+              };
+              await db.companies.put(company);
+            }
 
-              // SYNC EXTRA COLLECTIONS FOR NEW DEVICE
-              const syncCollections = [
-                'departments', 
-                'products', 
-                'categories', 
-                'suppliers',
-                'loans',
-                'sales',
-                'saleItems',
-                'purchases',
-                'purchaseItems',
-                'transactions',
-                'attendance'
-              ];
-              for (const collName of syncCollections) {
-                const q = query(collection(firestore, collName), where('companyId', '==', user.companyId));
-                const snapshot = await getDocs(q);
-                for (const d of snapshot.docs) {
-                  const data = d.data();
-                  await (db as any)[collName].put({
-                    id: d.id,
-                    ...data,
-                    createdAt: data.createdAt?.toDate?.() || new Date(),
-                    date: data.date?.toDate?.() || (data.date ? new Date(data.date) : undefined),
-                    dueDate: data.dueDate?.toDate?.() || undefined,
-                    checkIn: data.checkIn?.toDate?.() || undefined,
-                    checkOut: data.checkOut?.toDate?.() || undefined,
-                  });
-                }
+            // Sync modular collections
+            const syncCollections = [
+              'departments', 
+              'products', 
+              'categories', 
+              'suppliers',
+              'loans',
+              'sales',
+              'saleItems',
+              'purchases',
+              'purchaseItems',
+              'transactions',
+              'attendance'
+            ];
+            for (const collName of syncCollections) {
+              const q = query(collection(firestore, collName), where('companyId', '==', user.companyId));
+              const snapshot = await getDocs(q);
+              for (const d of snapshot.docs) {
+                const data = d.data();
+                await (db as any)[collName].put({
+                  id: d.id,
+                  ...data,
+                  createdAt: data.createdAt?.toDate?.() || new Date(),
+                  date: data.date?.toDate?.() || (data.date ? new Date(data.date) : undefined),
+                  dueDate: data.dueDate?.toDate?.() || undefined,
+                  checkIn: data.checkIn?.toDate?.() || undefined,
+                  checkOut: data.checkOut?.toDate?.() || undefined,
+                });
               }
             }
+          }
           } catch (syncError) {
             console.error('Firestore sync failed during login', syncError);
           }
