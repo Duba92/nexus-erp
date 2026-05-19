@@ -62,7 +62,8 @@ import { ScrollArea } from '@/src/components/ui/scroll-area';
 
   const handleCreateCompany = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
+    const formElement = e.currentTarget;
+    const formData = new FormData(formElement);
     const selectedModules = (formData.getAll('modules') as string[]) || [];
     
     try {
@@ -74,26 +75,30 @@ import { ScrollArea } from '@/src/components/ui/scroll-area';
       let firebaseUid = '';
       let authErrorMsg = '';
 
-      // Pre-emptive lookup: if their document already exists in Firestore under this phone number, reuse their UID.
-      try {
-        const { collection: fsCol, query: fsQ, where: fsW, getDocs: fsDocs } = await import('firebase/firestore');
-        const q = fsQ(fsCol(firestore, 'users'), fsW('phone', '==', normalizedAdminPhone));
-        const snap = await fsDocs(q);
-        if (!snap.empty) {
-          firebaseUid = snap.docs[0].id;
-          console.log('Pre-emptive check: Company Admin exists in Firestore. Reusing UID:', firebaseUid);
-        }
-      } catch (dbErr) {
-        console.warn('Pre-emptive Firestore lookup failed for admin:', dbErr);
-      }
-
-      if (!firebaseUid) {
+      if (navigator.onLine) {
+        // Pre-emptive lookup: if their document already exists in Firestore under this phone number, reuse their UID.
         try {
-          firebaseUid = await createSecondaryAuthUser(normalizedAdminPhone, adminPassword);
-        } catch (authError: any) {
-          console.warn('Firebase account creation failed', authError);
-          authErrorMsg = authError?.message || '';
+          const { collection: fsCol, query: fsQ, where: fsW, getDocs: fsDocs } = await import('firebase/firestore');
+          const q = fsQ(fsCol(firestore, 'users'), fsW('phone', '==', normalizedAdminPhone));
+          const snap = await fsDocs(q);
+          if (!snap.empty) {
+            firebaseUid = snap.docs[0].id;
+            console.log('Pre-emptive check: Company Admin exists in Firestore. Reusing UID:', firebaseUid);
+          }
+        } catch (dbErr) {
+          console.warn('Pre-emptive Firestore lookup failed for admin:', dbErr);
         }
+
+        if (!firebaseUid) {
+          try {
+            firebaseUid = await createSecondaryAuthUser(normalizedAdminPhone, adminPassword);
+          } catch (authError: any) {
+            console.warn('Firebase account creation failed', authError);
+            authErrorMsg = authError?.message || '';
+          }
+        }
+      } else {
+        authErrorMsg = 'Offline Mode';
       }
 
       const companyId = crypto.randomUUID();
@@ -128,27 +133,31 @@ import { ScrollArea } from '@/src/components/ui/scroll-area';
 
       // 3. Sync to Firestore
       let syncedOnline = false;
-      try {
-        await setDoc(doc(firestore, 'companies', companyId.toString()), {
-          ...companyObj,
-          id: companyId,
-          createdAt: serverTimestamp(),
-        });
-
-        if (firebaseUid) {
-          await setDoc(doc(firestore, 'users', firebaseUid), {
-            ...adminObj,
-            firebaseUid,
+      if (navigator.onLine) {
+        try {
+          await setDoc(doc(firestore, 'companies', companyId.toString()), {
+            ...companyObj,
+            id: companyId,
             createdAt: serverTimestamp(),
           });
-          syncedOnline = true;
+
+          if (firebaseUid) {
+            await setDoc(doc(firestore, 'users', firebaseUid), {
+              ...adminObj,
+              firebaseUid,
+              createdAt: serverTimestamp(),
+            });
+            syncedOnline = true;
+          }
+        } catch (syncError) {
+          console.error('Firestore sync failed', syncError);
         }
-      } catch (syncError) {
-        console.error('Firestore sync failed', syncError);
       }
 
       if (syncedOnline) {
-        toast.success('Company and Admin account registered successfully both locally and on Cloud Auth.');
+        toast.success(`Company "${companyObj.name}" and Admin account registered successfully both locally and on Cloud Auth.`);
+      } else if (!navigator.onLine) {
+        toast.info(`Company "${companyObj.name}" created locally in offline mode. It will automatically sync when you connect to the internet.`);
       } else {
         toast.warning(
           authErrorMsg 
@@ -156,6 +165,7 @@ import { ScrollArea } from '@/src/components/ui/scroll-area';
             : 'Company created locally. Cloud Auth sync pending (Local Offline Mode).'
         );
       }
+      formElement.reset();
       setIsCreateOpen(false);
     } catch (err) {
       toast.error('Failed to create company: ' + (err instanceof Error ? err.message : 'Unknown error'));

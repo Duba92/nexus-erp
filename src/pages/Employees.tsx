@@ -121,7 +121,8 @@ export default function Employees() {
       return;
     }
 
-    const formData = new FormData(e.currentTarget);
+    const formElement = e.currentTarget;
+    const formData = new FormData(formElement);
     const targetCompanyId = currentUser?.role === 'SUPER_ADMIN'
       ? (formData.get('companyId') as string)
       : currentCompany?.id!;
@@ -141,29 +142,37 @@ export default function Employees() {
       let firebaseUid = '';
       let authErrorMsg = '';
 
-      // Pre-emptive lookup: if their document already exists in Firestore under this phone number, reuse their UID.
-      try {
-        const { collection: fsCol, query: fsQ, where: fsW, getDocs: fsDocs } = await import('firebase/firestore');
-        const q = fsQ(fsCol(firestore, 'users'), fsW('phone', '==', normalizedPhone));
-        const snap = await fsDocs(q);
-        if (!snap.empty) {
-          firebaseUid = snap.docs[0].id;
-          console.log('Pre-emptive check: Employee exists in Firestore. Reusing UID:', firebaseUid);
-        }
-      } catch (dbErr) {
-        console.warn('Pre-emptive Firestore lookup failed:', dbErr);
-      }
-
-      if (!firebaseUid) {
+      if (navigator.onLine) {
+        // Pre-emptive lookup: if their document already exists in Firestore under this phone number, reuse their UID.
         try {
-          firebaseUid = await createSecondaryAuthUser(normalizedPhone, password);
-        } catch (authError: any) {
-          console.warn('Firebase user creation failed (account might already exist)', authError);
-          authErrorMsg = authError?.message || '';
+          const { collection: fsCol, query: fsQ, where: fsW, getDocs: fsDocs } = await import('firebase/firestore');
+          const q = fsQ(fsCol(firestore, 'users'), fsW('phone', '==', normalizedPhone));
+          const snap = await fsDocs(q);
+          if (!snap.empty) {
+            firebaseUid = snap.docs[0].id;
+            console.log('Pre-emptive check: Employee exists in Firestore. Reusing UID:', firebaseUid);
+          }
+        } catch (dbErr) {
+          console.warn('Pre-emptive Firestore lookup failed:', dbErr);
         }
+
+        if (!firebaseUid) {
+          try {
+            firebaseUid = await createSecondaryAuthUser(normalizedPhone, password);
+          } catch (authError: any) {
+            console.warn('Firebase user creation failed (account might already exist)', authError);
+            authErrorMsg = authError?.message || '';
+          }
+        }
+      } else {
+        authErrorMsg = 'Offline Mode';
       }
 
       const employeeId = firebaseUid || crypto.randomUUID();
+      const salaryVal = parseFloat(formData.get('salary') as string);
+      const cleanedSalary = isNaN(salaryVal) ? 0 : salaryVal;
+      const cleanedDeptId = (formData.get('departmentId') as string) || '';
+
       const employeeData = {
         id: employeeId,
         companyId: targetCompanyId,
@@ -173,8 +182,8 @@ export default function Employees() {
         role: role,
         permissions: selectedPermissions,
         phone: normalizedPhone,
-        salary: parseFloat(formData.get('salary') as string),
-        departmentId: formData.get('departmentId') as string,
+        salary: cleanedSalary,
+        departmentId: cleanedDeptId,
         createdAt: new Date(),
       };
       
@@ -183,19 +192,23 @@ export default function Employees() {
 
       // 3. Sync to Firestore
       let syncedOnline = false;
-      try {
-        await setDoc(doc(firestore, 'users', employeeId), {
-          ...employeeData,
-          firebaseUid: employeeId,
-          createdAt: serverTimestamp(),
-        });
-        syncedOnline = true;
-      } catch (syncError) {
-        console.error('Firestore sync failed', syncError);
+      if (navigator.onLine) {
+        try {
+          await setDoc(doc(firestore, 'users', employeeId), {
+            ...employeeData,
+            firebaseUid: employeeId,
+            createdAt: serverTimestamp(),
+          });
+          syncedOnline = true;
+        } catch (syncError) {
+          console.error('Firestore sync failed', syncError);
+        }
       }
 
       if (syncedOnline) {
         toast.success(`Employee "${employeeData.fullName}" registered successfully both locally and on Cloud Auth.`);
+      } else if (!navigator.onLine) {
+        toast.info(`Employee "${employeeData.fullName}" registered locally (Offline Mode). It will automatically sync when you connect to the internet.`);
       } else {
         toast.warning(
           authErrorMsg 
@@ -203,6 +216,7 @@ export default function Employees() {
             : `Employee "${employeeData.fullName}" registered locally. Cloud Auth sync pending.`
         );
       }
+      formElement.reset();
       setSelectedPermissions(['pos']);
       setIsAddOpen(false);
     } catch (err) {

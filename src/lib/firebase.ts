@@ -1,4 +1,4 @@
-import { initializeApp, deleteApp } from 'firebase/app';
+import { initializeApp, deleteApp, getApp, getApps } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
@@ -31,7 +31,17 @@ export const formatPhoneToEmail = (phone: string) => {
  * This prevents the current admin user from being signed out.
  */
 export const createSecondaryAuthUser = async (phone: string, password: string) => {
-  const secondaryApp = initializeApp(firebaseConfig, 'SecondaryApp');
+  let secondaryApp;
+  try {
+    const existingApp = getApp('SecondaryApp');
+    if (existingApp) {
+      await deleteApp(existingApp);
+    }
+  } catch (e) {
+    // Expected if SecondaryApp does not exist
+  }
+
+  secondaryApp = initializeApp(firebaseConfig, 'SecondaryApp');
   const secondaryAuth = getAuth(secondaryApp);
   const email = formatPhoneToEmail(phone);
   
