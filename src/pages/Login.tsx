@@ -112,7 +112,7 @@ export default function Login() {
             const syncedUserData = {
               ...userData,
               id: firebaseUser.uid,
-              passwordHash: userData.passwordHash || password, // Fallback to provided password if hash is missing
+              passwordHash: password, // Keep local credentials fresh
               createdAt: userData.createdAt?.toDate?.() || (userData.createdAt ? new Date(userData.createdAt.seconds * 1000) : new Date()),
               updatedAt: userData.updatedAt?.toDate?.() || (userData.updatedAt ? new Date(userData.updatedAt.seconds * 1000) : undefined),
             } as any;
@@ -124,6 +124,18 @@ export default function Login() {
               const newUser = { id: firebaseUser.uid, ...syncedUserData };
               await db.users.add(newUser);
               user = newUser;
+            }
+
+            // Sync password update to Cloud Firestore as well so they can use it on any device
+            if (userData.passwordHash !== password) {
+              try {
+                await setDoc(doc(firestore, 'users', firebaseUser.uid), {
+                  passwordHash: password,
+                  updatedAt: serverTimestamp(),
+                }, { merge: true });
+              } catch (fsErr) {
+                console.warn('Could not update passwordHash on Cloud Firestore:', fsErr);
+              }
             }
           } else {
             // Handle case where Auth exists but Firestore record is missing (Bootstrap/Repair)
@@ -182,6 +194,7 @@ export default function Login() {
                     
                     const syncedUserData: any = {
                       ...healedUserData,
+                      passwordHash: password,
                       createdAt: uData.createdAt?.toDate?.() || new Date(),
                       updatedAt: new Date(),
                     };
@@ -313,8 +326,8 @@ export default function Login() {
           }
         }
 
-      // 3. Final validation (works offline using local hash)
-      if (user && user.passwordHash === password) {
+      // 3. Final validation (works offline using local hash; online logins bypass hash match because Firebase Auth succeeded)
+      if (user && (firebaseUser || user.passwordHash === password)) {
         let company = null;
         if (user.companyId) {
           company = (await db.companies.get(user.companyId)) || null;

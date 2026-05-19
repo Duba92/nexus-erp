@@ -205,11 +205,13 @@ export default function Employees() {
         }
       }
 
+      toast.success('Registration completed successfully.');
       formElement.reset();
       setSelectedPermissions(['pos']);
       setIsAddOpen(false);
     } catch (err) {
       console.error('Failed to register employee:', err);
+      toast.error('Registration failed: ' + (err instanceof Error ? err.message : 'Unknown error'));
     }
   };
 

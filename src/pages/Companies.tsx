@@ -154,10 +154,12 @@ import { ScrollArea } from '@/src/components/ui/scroll-area';
         }
       }
 
+      toast.success('Registration completed successfully.');
       formElement.reset();
       setIsCreateOpen(false);
     } catch (err) {
       console.error('Failed to create company:', err);
+      toast.error('Registration failed: ' + (err instanceof Error ? err.message : 'Unknown error'));
     }
   };
 
