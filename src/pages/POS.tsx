@@ -214,9 +214,9 @@ export default function POS() {
   };
 
   return (
-    <div className="flex flex-col md:flex-row gap-4 h-[calc(100vh-175px)] md:h-[calc(100vh-125px)] overflow-hidden">
+    <div className="flex flex-col md:flex-row gap-4 h-[calc(100vh-180px)] md:h-[calc(100vh-125px)] overflow-hidden">
       {/* Product Selection Area */}
-      <div className="flex-1 flex flex-col gap-4 overflow-hidden min-h-0">
+      <div className="flex-1 flex flex-col gap-4 min-h-0 overflow-hidden">
         <div className="flex items-center gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -229,7 +229,7 @@ export default function POS() {
           </div>
         </div>
         
-        <ScrollArea className="flex-1">
+        <div className="flex-1 overflow-y-auto min-h-0">
           <div className="grid grid-cols-2 gap-3 pb-40 md:pb-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {filteredProducts?.map((product) => (
               <Card 
@@ -255,7 +255,7 @@ export default function POS() {
               </Card>
             ))}
           </div>
-        </ScrollArea>
+        </div>
       </div>
 
       {/* Cart Area */}
@@ -263,7 +263,7 @@ export default function POS() {
         "flex flex-col h-full bg-card/50 shadow-lg border-primary/10 shrink-0 md:relative transition-all duration-200",
         "w-full md:w-[350px] lg:w-[400px]",
         // Mobile full screen overlay
-        "fixed inset-0 z-50 bg-background md:bg-card/50 md:z-0 rounded-none md:rounded-xl md:h-full",
+        "fixed inset-0 z-[60] bg-background md:bg-card/50 md:z-0 rounded-none md:rounded-xl md:h-full",
         showMobileCart ? "flex" : "hidden md:flex"
       )}>
         <CardHeader className="py-2 px-4 border-b flex-row items-center justify-between md:py-3">
@@ -283,7 +283,7 @@ export default function POS() {
         </CardHeader>
         
         <CardContent className="flex-1 p-0 overflow-hidden">
-          <ScrollArea className="h-full px-4">
+          <div className="h-full overflow-y-auto px-4">
             <div className="py-2 space-y-3 pb-24 md:pb-4">
               {cart.length > 0 ? (
                 cart.map((item) => (
@@ -341,7 +341,7 @@ export default function POS() {
                 </div>
               )}
             </div>
-          </ScrollArea>
+          </div>
         </CardContent>
 
         <CardFooter className="flex-col gap-2 p-3 border-t bg-primary/5 sticky bottom-0 z-10 w-full mt-auto">
