@@ -244,11 +244,18 @@ export default function Employees() {
 
       // Sync to Firestore
       try {
-        await setDoc(doc(firestore, 'users', editingEmployee.id!), {
+        const payload = {
           ...editingEmployee,
           ...updatedData,
           updatedAt: serverTimestamp(),
-        }, { merge: true });
+        };
+        // Sanitize object to remove any undefined fields that could crash Firestore
+        Object.keys(payload).forEach(key => {
+          if ((payload as any)[key] === undefined) {
+            delete (payload as any)[key];
+          }
+        });
+        await setDoc(doc(firestore, 'users', editingEmployee.id!), payload, { merge: true });
       } catch (syncError) {
         console.error('Firestore sync failed at update employee', syncError);
       }

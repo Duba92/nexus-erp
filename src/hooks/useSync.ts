@@ -100,12 +100,29 @@ export function useSync() {
             if (change.type === 'removed') {
               await localTable.delete(change.doc.id);
             } else {
-              await localTable.put({
+              const putData: any = {
                 id: change.doc.id,
                 ...docData,
-                createdAt: docData.createdAt?.toDate?.() || (docData.createdAt ? new Date(docData.createdAt.seconds * 1000) : new Date()),
-                updatedAt: docData.updatedAt?.toDate?.() || (docData.updatedAt ? new Date(docData.updatedAt.seconds * 1000) : undefined),
+              };
+
+              if (docData.createdAt) {
+                putData.createdAt = docData.createdAt?.toDate?.() || new Date(docData.createdAt.seconds * 1000);
+              } else if (putData.createdAt === undefined) {
+                putData.createdAt = new Date();
+              }
+
+              if (docData.updatedAt) {
+                putData.updatedAt = docData.updatedAt?.toDate?.() || new Date(docData.updatedAt.seconds * 1000);
+              }
+
+              // Filter out any undefined fields so they aren't stored as literal undefined in Dexie
+              Object.keys(putData).forEach(key => {
+                if (putData[key] === undefined) {
+                  delete putData[key];
+                }
               });
+
+              await localTable.put(putData);
             }
           });
         }, (error) => {
@@ -165,16 +182,45 @@ export function useSync() {
             if (change.type === 'removed') {
               await localTable.delete(change.doc.id);
             } else {
-              await localTable.put({
+              const putData: any = {
                 id: change.doc.id,
                 ...docData,
-                createdAt: docData.createdAt?.toDate?.() || (docData.createdAt ? new Date(docData.createdAt.seconds * 1000) : new Date()),
-                updatedAt: docData.updatedAt?.toDate?.() || (docData.updatedAt ? new Date(docData.updatedAt.seconds * 1000) : undefined),
-                date: docData.date?.toDate?.() || (docData.date ? new Date(docData.date) : undefined),
-                dueDate: docData.dueDate?.toDate?.() || undefined,
-                checkIn: docData.checkIn?.toDate?.() || undefined,
-                checkOut: docData.checkOut?.toDate?.() || undefined,
+              };
+
+              if (docData.createdAt) {
+                putData.createdAt = docData.createdAt?.toDate?.() || new Date(docData.createdAt.seconds * 1000);
+              } else if (putData.createdAt === undefined) {
+                putData.createdAt = new Date();
+              }
+
+              if (docData.updatedAt) {
+                putData.updatedAt = docData.updatedAt?.toDate?.() || new Date(docData.updatedAt.seconds * 1000);
+              }
+
+              if (docData.date) {
+                putData.date = docData.date?.toDate?.() || new Date(docData.date);
+              }
+
+              if (docData.dueDate) {
+                putData.dueDate = docData.dueDate?.toDate?.() || new Date(docData.dueDate);
+              }
+
+              if (docData.checkIn) {
+                putData.checkIn = docData.checkIn?.toDate?.() || new Date(docData.checkIn);
+              }
+
+              if (docData.checkOut) {
+                putData.checkOut = docData.checkOut?.toDate?.() || new Date(docData.checkOut);
+              }
+
+              // Filter out any undefined fields so they aren't stored as literal undefined in Dexie
+              Object.keys(putData).forEach(key => {
+                if (putData[key] === undefined) {
+                  delete putData[key];
+                }
               });
+
+              await localTable.put(putData);
             }
           });
         }, (error) => {

@@ -108,10 +108,17 @@ export default function Inventory() {
 
       // Sync to Firestore
       try {
-        await setDoc(doc(firestore, 'products', productId), {
+        const payload = {
           ...productData,
           createdAt: serverTimestamp(),
+        };
+        // Sanitize object to remove any wedding undefined fields that could crash Firestore
+        Object.keys(payload).forEach(key => {
+          if ((payload as any)[key] === undefined) {
+            delete (payload as any)[key];
+          }
         });
+        await setDoc(doc(firestore, 'products', productId), payload);
       } catch (syncError) {
         console.error('Firestore sync failed', syncError);
       }
@@ -161,11 +168,18 @@ export default function Inventory() {
 
       // Sync to Firestore
       try {
-        await setDoc(doc(firestore, 'products', editingProduct.id!), {
+        const payload = {
           ...editingProduct,
           ...updatedProduct,
           updatedAt: serverTimestamp(),
-        }, { merge: true });
+        };
+        // Sanitize object to remove any undefined fields that could crash Firestore
+        Object.keys(payload).forEach(key => {
+          if ((payload as any)[key] === undefined) {
+            delete (payload as any)[key];
+          }
+        });
+        await setDoc(doc(firestore, 'products', editingProduct.id!), payload, { merge: true });
       } catch (syncError) {
         console.error('Firestore sync failed at update', syncError);
       }
