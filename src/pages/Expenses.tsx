@@ -53,6 +53,7 @@ export default function Expenses() {
 
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const filteredExpenses = expenses?.filter(e => 
     e.category.toLowerCase().includes(search.toLowerCase()) || 
@@ -61,6 +62,7 @@ export default function Expenses() {
 
   const handleAddExpense = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (isSubmitting) return;
     if (!currentCompany) return;
 
     const formData = new FormData(e.currentTarget);
@@ -74,6 +76,7 @@ export default function Expenses() {
       return;
     }
 
+    setIsSubmitting(true);
     try {
       const txId = crypto.randomUUID();
       const txData = {
@@ -99,10 +102,12 @@ export default function Expenses() {
         console.error('Firestore sync failed', syncError);
       }
 
-      toast.success('Expense recorded successfully');
+      toast.success('Expense added successfully.');
       setIsAddOpen(false);
     } catch (err) {
       toast.error('Failed to add expense');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -164,7 +169,14 @@ export default function Expenses() {
                 </div>
               </div>
               <DialogFooter>
-                <Button type="submit">Save Expense</Button>
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <span className="flex items-center gap-2">
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                      Saving...
+                    </span>
+                  ) : 'Save Expense'}
+                </Button>
               </DialogFooter>
             </form>
           </DialogContent>

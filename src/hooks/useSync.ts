@@ -37,6 +37,8 @@ export async function syncOfflineDataToCloud(companyId?: string, isSuper?: boole
         if (collName === 'companies') {
           const companyObj = await localTable.get(companyId);
           localDocs = companyObj ? [companyObj] : [];
+        } else if (collName === 'saleItems' || collName === 'purchaseItems') {
+          localDocs = await localTable.toArray();
         } else {
           localDocs = await localTable.where('companyId').equals(companyId).toArray();
         }
@@ -55,6 +57,10 @@ export async function syncOfflineDataToCloud(companyId?: string, isSuper?: boole
             cleanDoc[k] = v;
           }
         });
+
+        if (companyId && !cleanDoc.companyId) {
+          cleanDoc.companyId = companyId;
+        }
 
         await setDoc(firestoreDocRef, cleanDoc, { merge: true });
       }

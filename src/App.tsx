@@ -80,9 +80,9 @@ export default function App() {
             <Route path="/users" element={<ProtectedRoute roles={['SUPER_ADMIN']}><Users /></ProtectedRoute>} />
             <Route path="/inventory" element={<ProtectedRoute permission="inventory"><Inventory /></ProtectedRoute>} />
             <Route path="/pos" element={<ProtectedRoute permission="pos"><POS /></ProtectedRoute>} />
-            <Route path="/employees" element={<ProtectedRoute permission="hr"><Employees /></ProtectedRoute>} />
+            <Route path="/employees" element={<ProtectedRoute roles={['SUPER_ADMIN']}><Employees /></ProtectedRoute>} />
             <Route path="/expenses" element={<ProtectedRoute><Expenses /></ProtectedRoute>} />
-            <Route path="/loans" element={<ProtectedRoute><Loans /></ProtectedRoute>} />
+            <Route path="/loans" element={<ProtectedRoute roles={['SUPER_ADMIN']}><Loans /></ProtectedRoute>} />
             <Route path="/reports" element={<ProtectedRoute permission="sales"><Reports /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="/settings" element={<Settings />} />

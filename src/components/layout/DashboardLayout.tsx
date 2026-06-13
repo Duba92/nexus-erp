@@ -44,8 +44,8 @@ const navItems: { nameKey: string; path: string; icon: any; roles?: string[] }[]
   { nameKey: 'users', path: '/users', icon: UserRound, roles: ['SUPER_ADMIN'] },
   { nameKey: 'pos', path: '/pos', icon: ShoppingCart },
   { nameKey: 'inventory', path: '/inventory', icon: Package },
-  { nameKey: 'loans', path: '/loans', icon: HandCoins },
-  { nameKey: 'employees', path: '/employees', icon: Users },
+  { nameKey: 'loans', path: '/loans', icon: HandCoins, roles: ['SUPER_ADMIN'] },
+  { nameKey: 'employees', path: '/employees', icon: Users, roles: ['SUPER_ADMIN'] },
   { nameKey: 'expenses', path: '/expenses', icon: ReceiptText },
   { nameKey: 'reports', path: '/reports', icon: BarChart3 },
 ];

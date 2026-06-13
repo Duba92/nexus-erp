@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { db } from '@/src/lib/db';
 import { auth, formatPhoneToEmail, normalizePhone, firestore } from '@/src/lib/firebase';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { createUserWithEmailAndPassword, updateProfile, signInAnonymously } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp, collection, query, where, getDocs } from 'firebase/firestore';
 import { useAuthStore } from '@/src/store/useAuthStore';
 import { Button } from '@/src/components/ui/button';
@@ -40,6 +40,13 @@ export default function Register() {
 
     setIsLoading(true);
 
+    const withTimeout = <T,>(promise: Promise<T>, ms: number, errorMessage = 'Operation timed out'): Promise<T> => {
+      return Promise.race([
+        promise,
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error(errorMessage)), ms))
+      ]);
+    };
+
     try {
       const normalizedPhone = normalizePhone(formData.phone);
       const phoneEmail = formatPhoneToEmail(normalizedPhone);
@@ -47,11 +54,30 @@ export default function Register() {
       let userUid: string = crypto.randomUUID(); // Default unique local ID
       let registeredOnline = false;
 
+      // Check if phone number is already registered in Firestore (critical for unauthenticated fallback)
+      if (navigator.onLine) {
+        try {
+          const checkQ = query(collection(firestore, 'users'), where('phone', '==', normalizedPhone));
+          const checkSnapshot = await withTimeout(getDocs(checkQ), 2200, 'uniqueness-timeout');
+          if (!checkSnapshot.empty) {
+            toast.error('This phone number is already registered. Please login instead.');
+            setIsLoading(false);
+            return;
+          }
+        } catch (checkErr) {
+          console.warn('Uniqueness validation skipped due to temporary network/rules issue or timeout:', checkErr);
+        }
+      }
+
       // Check if online to register with Firebase Auth
       if (navigator.onLine) {
         try {
-          // 1. Firebase Auth Registration
-          const userCredential = await createUserWithEmailAndPassword(auth, phoneEmail, formData.password);
+          // 1. Firebase Auth Registration with safety timeout
+          const userCredential = await withTimeout(
+            createUserWithEmailAndPassword(auth, phoneEmail, formData.password),
+            4000,
+            'auth-timeout'
+          );
           await updateProfile(userCredential.user, { displayName: formData.fullName });
           userUid = userCredential.user.uid;
           registeredOnline = true;
@@ -62,9 +88,29 @@ export default function Register() {
             setIsLoading(false);
             return;
           }
-          // If it is a network or firebase auth error, fallback to offline registration
-          if (authError.code === 'auth/network-request-failed' || !navigator.onLine) {
-            toast.info('Offline mode: Registering account locally on this device.');
+          // If it is a network, firebase auth configuration, operation not allowed or fallback case, register offline/direct sync
+          if (
+            authError.message === 'auth-timeout' ||
+            authError.code === 'auth/network-request-failed' ||
+            authError.code === 'auth/operation-not-allowed' ||
+            authError.message?.includes('operation-not-allowed') ||
+            !navigator.onLine
+          ) {
+            if (authError.code === 'auth/operation-not-allowed' || authError.message?.includes('operation-not-allowed') || authError.message === 'auth-timeout') {
+              console.warn('Offline/No Auth fallback: Direct Firestore sync with anonymous auth context.', authError);
+              registeredOnline = true; // Still allow syncing directly to Firestore
+              
+              // Authenticate anonymously with safety timeout
+              try {
+                const anonCredential = await withTimeout(signInAnonymously(auth), 2000, 'anon-timeout');
+                userUid = anonCredential.user.uid;
+                console.log('Anonymous registration active, UID assigned:', userUid);
+              } catch (anonErr) {
+                console.warn('Could not do anonymous sign-in fallback:', anonErr);
+              }
+            } else {
+              toast.info('Offline mode: Registering account locally on this device.');
+            }
           } else {
             throw authError; // For other issues like weak password, etc.
           }
@@ -78,6 +124,7 @@ export default function Register() {
         id: companyId,
         name: formData.companyName,
         email: '', 
+        allowedModules: ['pos', 'inventory', 'hr', 'loans', 'expenses', 'sales'],
         createdAt: new Date(),
       };
 
@@ -85,6 +132,7 @@ export default function Register() {
         id: userUid,
         companyId,
         fullName: formData.fullName,
+        work: formData.companyName,
         phone: normalizedPhone,
         email: phoneEmail,
         passwordHash: formData.password,
@@ -97,23 +145,26 @@ export default function Register() {
       await db.companies.put(companyData);
       await db.users.put(userData);
 
-      // 3. Sync to Firestore (Mandatory for multi-device login) if online
+      // 3. Sync to Firestore (Mandatory for multi-device login) if online in background
       if (registeredOnline) {
-        try {
-          await setDoc(doc(firestore, 'companies', companyId), {
-            ...companyData,
-            createdAt: serverTimestamp(),
-          });
-          
-          await setDoc(doc(firestore, 'users', userUid), {
-            ...userData,
-            firebaseUid: userUid,
-            createdAt: serverTimestamp(),
-          });
-        } catch (syncError) {
-          console.error('Firestore sync failed at registration', syncError);
-          // We continue since local DB is ready and has the state
-        }
+        // Run as floating background task to never block the main transition
+        (async () => {
+          try {
+            await withTimeout(setDoc(doc(firestore, 'companies', companyId), {
+              ...companyData,
+              createdAt: serverTimestamp(),
+            }), 3000, 'companies-sync-timeout');
+            
+            await withTimeout(setDoc(doc(firestore, 'users', userUid), {
+              ...userData,
+              firebaseUid: userUid,
+              createdAt: serverTimestamp(),
+            }), 3000, 'users-sync-timeout');
+            console.log('Background Firestore sync finished successfully.');
+          } catch (syncError) {
+            console.warn('Background Firestore sync failed or timed out:', syncError);
+          }
+        })();
       }
 
       // Auto login and navigate
@@ -162,7 +213,7 @@ export default function Register() {
           <CardHeader>
             <CardTitle className="text-2xl">Create Account</CardTitle>
             <CardDescription>
-              Register your company to start managing your business.
+              Enter your work details to start managing your business.
             </CardDescription>
           </CardHeader>
           <form onSubmit={handleRegister}>
@@ -199,12 +250,12 @@ export default function Register() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="companyName">Company Name</Label>
+                <Label htmlFor="companyName">Work</Label>
                 <div className="relative">
                   <Building2 className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="companyName"
-                    placeholder="My Business"
+                    placeholder="Work name / Business"
                     className="pl-10 h-11"
                     value={formData.companyName}
                     onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}

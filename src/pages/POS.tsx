@@ -51,14 +51,21 @@ import { useTranslation } from '@/src/lib/i18n';
 export default function POS() {
   const { currentCompany, currentUser } = useAuthStore();
   const { t, formatCurrency } = useTranslation();
-  const products = useLiveQuery(() => 
-    currentCompany ? db.products.where('companyId').equals(currentCompany.id!).toArray() : []
-  , [currentCompany]);
+  const products = useLiveQuery(async () => {
+    if (!currentCompany) return [];
+    const prods = await db.products.where('companyId').equals(currentCompany.id!).toArray();
+    return prods.map(p => ({
+      ...p,
+      sellingPrice: p.sellingPrice && p.sellingPrice > 0 ? p.sellingPrice : p.costPrice
+    }));
+  }, [currentCompany]);
 
   const [search, setSearch] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'BANK' | 'MOBILE'>('CASH');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showMobileCart, setShowMobileCart] = useState(false);
 
   const filteredProducts = products?.filter(p => 
     p.name.toLowerCase().includes(search.toLowerCase())
@@ -116,7 +123,9 @@ export default function POS() {
 
   const handleCheckout = async () => {
     if (!currentCompany || !currentUser) return;
+    if (isSubmitting) return;
 
+    setIsSubmitting(true);
     const saleId = crypto.randomUUID();
 
     try {
@@ -146,6 +155,7 @@ export default function POS() {
           const itemId = crypto.randomUUID();
           const saleItemData = {
             id: itemId,
+            companyId: currentCompany.id!,
             saleId,
             productId: item.id!,
             quantity: item.cartQuantity,
@@ -185,22 +195,28 @@ export default function POS() {
         });
       });
 
-      // Commit Firestore changes
-      await batch.commit();
+      // Commit child changes to Firestore (robust offline handling)
+      try {
+        await batch.commit();
+      } catch (firestoreError) {
+        console.warn('Firestore sync will occur later: ', firestoreError);
+      }
 
-      toast.success('Checkout successful!');
+      toast.success('Sale added successfully.');
       setCart([]);
       setIsCheckoutOpen(false);
     } catch (err) {
       toast.error('Transaction failed: ' + (err instanceof Error ? err.message : 'Unknown error'));
       console.error(err);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="flex flex-col md:flex-row gap-4 h-full overflow-hidden">
+    <div className="flex flex-col md:flex-row gap-4 h-[calc(100vh-175px)] md:h-[calc(100vh-125px)] overflow-hidden">
       {/* Product Selection Area */}
-      <div className="flex-1 flex flex-col gap-4 overflow-hidden min-h-[400px] md:min-h-0">
+      <div className="flex-1 flex flex-col gap-4 overflow-hidden min-h-0">
         <div className="flex items-center gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -243,23 +259,25 @@ export default function POS() {
       </div>
 
       {/* Cart Area */}
-      <Card className="w-full md:w-[350px] lg:w-[400px] flex flex-col h-full bg-card/50 shadow-lg border-primary/10 shrink-0 md:relative fixed inset-x-0 bottom-16 md:bottom-0 z-40 md:z-0 md:translate-y-0 transition-transform duration-300 md:rounded-xl rounded-t-2xl shadow-2xl md:shadow-lg h-[40vh] md:h-full">
-        <CardHeader className="py-2 px-4 border-b flex-row items-center justify-between md:py-3" onClick={() => {
-          if (window.innerWidth < 768) {
-            // This is a simple way to toggle the mobile height if needed, but for now let's make it a sensible fixed height
-          }
-        }}>
+      <Card className={cn(
+        "flex flex-col h-full bg-card/50 shadow-lg border-primary/10 shrink-0 md:relative transition-all duration-200",
+        "w-full md:w-[350px] lg:w-[400px]",
+        // Mobile full screen overlay
+        "fixed inset-0 z-50 bg-background md:bg-card/50 md:z-0 rounded-none md:rounded-xl md:h-full",
+        showMobileCart ? "flex" : "hidden md:flex"
+      )}>
+        <CardHeader className="py-2 px-4 border-b flex-row items-center justify-between md:py-3">
           <div className="flex items-center gap-2">
             <ShoppingCart className="h-4 w-4" />
             <CardTitle className="text-base">Cart</CardTitle>
           </div>
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="text-[10px]">{cart.length} items</Badge>
-            <Button variant="ghost" size="icon" className="md:hidden h-8 w-8" onClick={(e) => {
+            <Button variant="ghost" size="icon" className="md:hidden h-8 w-8 text-muted-foreground hover:text-foreground" onClick={(e) => {
               e.stopPropagation();
-              // Logic to minimize/maximize could go here
+              setShowMobileCart(false);
             }}>
-              <XCircle className="h-4 w-4" />
+              <XCircle className="h-5 w-5" />
             </Button>
           </div>
         </CardHeader>
@@ -336,7 +354,10 @@ export default function POS() {
           <Button 
             className="w-full h-10 text-base font-black shadow-lg shadow-primary/20" 
             disabled={cart.length === 0}
-            onClick={() => setIsCheckoutOpen(true)}
+            onClick={() => {
+              setIsCheckoutOpen(true);
+              setShowMobileCart(false);
+            }}
           >
             <CreditCard className="mr-2 h-4 w-4" />
             CHECKOUT
@@ -389,11 +410,34 @@ export default function POS() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" className="flex-1" onClick={() => setIsCheckoutOpen(false)}>Cancel</Button>
-            <Button className="flex-1" onClick={handleCheckout}>Pay Now</Button>
+            <Button variant="outline" className="flex-1" onClick={() => setIsCheckoutOpen(false)} disabled={isSubmitting}>Cancel</Button>
+            <Button className="flex-1" onClick={handleCheckout} disabled={isSubmitting}>
+              {isSubmitting ? (
+                <span className="flex items-center gap-2">
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  Saving...
+                </span>
+              ) : 'Pay Now'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Floating Mobile Cart summary bar when cart has items and is not toggled open */}
+      {cart.length > 0 && !showMobileCart && (
+        <div className="md:hidden fixed bottom-[80px] inset-x-4 z-40 transition-all duration-200">
+          <Button 
+            className="w-full h-12 shadow-2xl rounded-xl flex items-center justify-between px-5 bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-bold border border-primary-foreground/10"
+            onClick={() => setShowMobileCart(true)}
+          >
+            <div className="flex items-center gap-2">
+              <ShoppingCart className="h-5 w-5" />
+              <span>View Cart ({cart?.length || 0} items)</span>
+            </div>
+            <span className="font-extrabold text-base bg-primary-foreground/20 px-2 py-0.5 rounded-md">{formatCurrency(total)}</span>
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

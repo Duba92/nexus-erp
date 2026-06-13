@@ -93,6 +93,7 @@ export interface Sale {
 
 export interface SaleItem {
   id?: string;
+  companyId?: string;
   saleId: string;
   productId: string;
   quantity: number;
@@ -111,6 +112,7 @@ export interface Purchase {
 
 export interface PurchaseItem {
   id?: string;
+  companyId?: string;
   purchaseId: string;
   productId: string;
   quantity: number;
@@ -155,7 +157,7 @@ export class HulleeDatabase extends Dexie {
   loans!: Table<Loan>;
 
   constructor() {
-    super('HulleePOS_DB_v3');
+    super('HulleePOS_DB_v4');
     this.version(1).stores({
       companies: 'id, name, email',
       users: 'id, companyId, phone, role',
@@ -164,9 +166,9 @@ export class HulleeDatabase extends Dexie {
       categories: 'id, companyId, name',
       suppliers: 'id, companyId, name',
       sales: 'id, companyId, userId, date',
-      saleItems: 'id, saleId, productId',
+      saleItems: 'id, saleId, productId, companyId',
       purchases: 'id, companyId, supplierId, date',
-      purchaseItems: 'id, purchaseId, productId',
+      purchaseItems: 'id, purchaseId, productId, companyId',
       transactions: 'id, companyId, type, category, date',
       attendance: 'id, employeeId, companyId, date',
       loans: 'id, companyId, borrowerName, type, status'

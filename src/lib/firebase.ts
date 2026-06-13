@@ -5,7 +5,7 @@ import firebaseConfig from '../../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const firestore = getFirestore(app);
+export const firestore = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 
 export const normalizePhone = (phone: string) => {
   // Remove all non-digits

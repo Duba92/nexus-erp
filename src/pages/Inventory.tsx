@@ -63,6 +63,7 @@ export default function Inventory() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [search, setSearch] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const filteredProducts = products?.filter(p => 
     p.name.toLowerCase().includes(search.toLowerCase())
@@ -70,6 +71,7 @@ export default function Inventory() {
 
   const handleAddProduct = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (isSubmitting) return;
     if (!currentCompany) {
       toast.error('No company selected. Please log in again or select a company.');
       return;
@@ -80,7 +82,6 @@ export default function Inventory() {
     const quantity = parseInt(formData.get('quantity') as string) || 0;
     const lowStockThreshold = parseInt(formData.get('lowStockThreshold') as string) || 5;
     const costPrice = parseFloat(formData.get('costPrice') as string) || 0;
-    // Remove sellingPrice from fixed product definition
     const unit = (formData.get('unit') as string) || 'pcs';
 
     if (!name) {
@@ -88,6 +89,7 @@ export default function Inventory() {
       return;
     }
 
+    setIsSubmitting(true);
     try {
       const productId = crypto.randomUUID();
       const productData = {
@@ -114,7 +116,7 @@ export default function Inventory() {
         console.error('Firestore sync failed', syncError);
       }
 
-      toast.success('Product added successfully');
+      toast.success('Inventory added successfully.');
       setIsAddOpen(false);
     } catch (err) {
       console.error('Error adding product:', err);
@@ -123,11 +125,14 @@ export default function Inventory() {
       } else {
         toast.error('Failed to add product: ' + (err instanceof Error ? err.message : 'Unknown error'));
       }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleUpdateProduct = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (isSubmitting) return;
     if (!editingProduct) return;
 
     const formData = new FormData(e.currentTarget);
@@ -142,6 +147,7 @@ export default function Inventory() {
       return;
     }
 
+    setIsSubmitting(true);
     try {
       const updatedProduct = {
         name,
@@ -170,6 +176,8 @@ export default function Inventory() {
     } catch (err) {
       console.error('Error updating product:', err);
       toast.error('Failed to update product');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -232,7 +240,14 @@ export default function Inventory() {
                 </div>
               </div>
               <DialogFooter>
-                <Button type="submit">{t('add_product')}</Button>
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <span className="flex items-center gap-2">
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                      Saving...
+                    </span>
+                  ) : t('add_product')}
+                </Button>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -421,7 +436,14 @@ export default function Inventory() {
                 </div>
               </div>
               <DialogFooter>
-                <Button type="submit">Update Product</Button>
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <span className="flex items-center gap-2">
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                      Saving...
+                    </span>
+                  ) : 'Update Product'}
+                </Button>
               </DialogFooter>
             </form>
           )}

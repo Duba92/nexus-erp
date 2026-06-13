@@ -205,7 +205,10 @@ export default function Employees() {
         }
       }
 
-      toast.success('Registration completed successfully.');
+      toast.success(
+        `Employee registered successfully!\nPhone ${normalizedPhone} can log in using the password: ${password}`,
+        { duration: 10000 }
+      );
       formElement.reset();
       setSelectedPermissions(['pos']);
       setIsAddOpen(false);

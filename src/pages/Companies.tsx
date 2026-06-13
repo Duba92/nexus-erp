@@ -141,20 +141,23 @@ import { ScrollArea } from '@/src/components/ui/scroll-area';
             createdAt: serverTimestamp(),
           });
 
-          if (firebaseUid) {
-            await setDoc(doc(firestore, 'users', firebaseUid), {
-              ...adminObj,
-              firebaseUid,
-              createdAt: serverTimestamp(),
-            });
-            syncedOnline = true;
-          }
+          const targetUid = firebaseUid || adminObj.id;
+          await setDoc(doc(firestore, 'users', targetUid), {
+            ...adminObj,
+            id: targetUid,
+            firebaseUid: targetUid,
+            createdAt: serverTimestamp(),
+          });
+          syncedOnline = true;
         } catch (syncError) {
           console.error('Firestore sync failed', syncError);
         }
       }
 
-      toast.success('Registration completed successfully.');
+      toast.success(
+        `Registration completed successfully!\nAdmin Phone ${normalizedAdminPhone} can now log in using the password: ${adminPassword}`,
+        { duration: 10000 }
+      );
       formElement.reset();
       setIsCreateOpen(false);
     } catch (err) {
