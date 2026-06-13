@@ -404,7 +404,7 @@ export default function Login() {
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
             <Building2 className="h-8 w-8" />
           </div>
-          <h1 className="text-3xl font-bold tracking-tight text-primary">Hullee</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-primary">Ulee</h1>
           <p className="text-muted-foreground">Mobile-First Professional POS</p>
         </div>
 
@@ -479,7 +479,7 @@ export default function Login() {
         </Card>
 
         <div className="mt-8 text-center text-xs text-muted-foreground space-y-2">
-          <p>&copy; 2026 Hullee. All rights reserved.</p>
+          <p>&copy; 2026 Ulee. All rights reserved.</p>
           <p className="opacity-0 hover:opacity-100 transition-opacity">Super Admin: +251992932031 / 341256</p>
         </div>
       </motion.div>

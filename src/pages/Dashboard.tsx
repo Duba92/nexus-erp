@@ -60,6 +60,14 @@ export default function Dashboard() {
     return transactions.reduce((acc, curr) => acc + (curr.type === 'INCOME' ? curr.amount : -curr.amount), 0);
   });
 
+  const totalExpenses = useLiveQuery(async () => {
+    const transactions = currentCompany 
+      ? await db.transactions.where('companyId').equals(currentCompany.id!).toArray()
+      : await db.transactions.toArray();
+    
+    return transactions.reduce((acc, curr) => acc + (curr.type === 'EXPENSE' ? curr.amount : 0), 0);
+  });
+
   const recentTransactions = useLiveQuery(() => 
     currentCompany 
       ? db.transactions.where('companyId').equals(currentCompany.id!).reverse().limit(5).toArray()
@@ -126,8 +134,8 @@ export default function Dashboard() {
       </div>
 
       <div className={cn(
-        "grid gap-4 md:grid-cols-2",
-        currentUser?.role === 'SUPER_ADMIN' ? "lg:grid-cols-4" : "lg:grid-cols-3"
+        "grid gap-4 sm:grid-cols-2",
+        currentUser?.role === 'SUPER_ADMIN' ? "lg:grid-cols-5" : "lg:grid-cols-4"
       )}>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -156,6 +164,18 @@ export default function Dashboard() {
                 +12% <ArrowUpRight className="ml-1 h-3 w-3" />
               </span>{' '}
               {t('from_last_month')}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">{t('total_expenses')}</CardTitle>
+            <TrendingDown className="h-4 w-4 text-destructive" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatCurrency(totalExpenses || 0)}</div>
+            <p className="text-xs text-muted-foreground">
+              {t('total_expenses')}
             </p>
           </CardContent>
         </Card>

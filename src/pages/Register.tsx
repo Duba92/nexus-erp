@@ -172,8 +172,8 @@ export default function Register() {
       setAuth(userData as any, companyData as any);
       
       toast.success(registeredOnline 
-        ? 'Registration successful! Welcome to Hullee.' 
-        : 'Registration successful locally (Offline Mode)! Welcome to Hullee.'
+        ? 'Registration successful! Welcome to Ulee.' 
+        : 'Registration successful locally (Offline Mode)! Welcome to Ulee.'
       );
       
       // Slight delay to allow toast to be seen
@@ -205,7 +205,7 @@ export default function Register() {
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
             <Building2 className="h-8 w-8" />
           </div>
-          <h1 className="text-3xl font-bold tracking-tight text-primary">Hullee</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-primary">Ulee</h1>
           <p className="text-muted-foreground">Professional Business Solutions</p>
         </div>
 
@@ -312,7 +312,7 @@ export default function Register() {
         </Card>
 
         <div className="mt-8 text-center text-xs text-muted-foreground">
-          &copy; 2026 Hullee. Secure & Reliable POS.
+          &copy; 2026 Ulee. Secure & Reliable POS.
         </div>
         </motion.div>
       </div>

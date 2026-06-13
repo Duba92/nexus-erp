@@ -137,7 +137,7 @@ export default function DashboardLayout() {
         <div className="flex h-16 items-center px-6">
           <Link to="/" className="flex items-center gap-2 font-bold text-xl">
             <Building2 className="h-6 w-6 text-primary" />
-            <span>Hullee</span>
+            <span>Ulee</span>
           </Link>
         </div>
         <ScrollArea className="flex-1 px-3">
@@ -177,7 +177,7 @@ export default function DashboardLayout() {
           <div className="flex items-center gap-4">
             <div className="md:hidden flex items-center gap-2 font-bold text-lg text-primary mr-2">
               <Building2 className="h-5 w-5" />
-              <span>Hullee</span>
+              <span>Ulee</span>
             </div>
             <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
               {currentCompany ? (

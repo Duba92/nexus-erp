@@ -14,8 +14,8 @@ export default defineConfig(({mode}) => {
         registerType: 'autoUpdate',
         includeAssets: ['favicon.ico', 'icon.svg', 'apple-touch-icon.png'],
         manifest: {
-          name: 'Hullee',
-          short_name: 'Hullee',
+          name: 'Ulee',
+          short_name: 'Ulee',
           description: 'Inventory, POS, and HR Management System',
           theme_color: '#0f172a',
           background_color: '#ffffff',

@@ -108,7 +108,7 @@ export default function Settings() {
       const attendance = await db.attendance.toArray();
       
       const backupData = {
-        type: 'HULLEE_EXPORT',
+        type: 'ULEE_EXPORT',
         version: '1.0',
         exportedAt: new Date().toISOString(),
         data: {
@@ -122,7 +122,7 @@ export default function Settings() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `hullee_pos_full_backup_${new Date().toISOString().split('T')[0]}.json`;
+      a.download = `ulee_pos_full_backup_${new Date().toISOString().split('T')[0]}.json`;
       a.click();
       
       toast.success('Full database backup generated');
@@ -147,7 +147,7 @@ export default function Settings() {
     reader.onload = async (event) => {
       try {
         const backup = JSON.parse(event.target?.result as string);
-        if (backup.type === 'HULLEE_EXPORT' && backup.data) {
+        if ((backup.type === 'HULLEE_EXPORT' || backup.type === 'ULEE_EXPORT') && backup.data) {
           const { 
             companies, users, products, categories, suppliers, 
             departments, sales, saleItems, purchases, 
@@ -256,7 +256,7 @@ export default function Settings() {
                   <Database className="h-5 w-5" />
                   Backup & Recovery
                 </CardTitle>
-                <CardDescription>Hullee stores data locally. Frequent backups are recommended.</CardDescription>
+                <CardDescription>Ulee stores data locally. Frequent backups are recommended.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -270,7 +270,7 @@ export default function Settings() {
                   </div>
                   <div className="p-4 border bg-white rounded-lg">
                     <h4 className="font-bold text-sm mb-2">Import Data</h4>
-                    <p className="text-xs text-muted-foreground mb-4">Restore data from a previously exported Hullee file.</p>
+                    <p className="text-xs text-muted-foreground mb-4">Restore data from a previously exported Ulee file.</p>
                     <Input 
                       type="file" 
                       id="restore-upload" 
@@ -440,9 +440,9 @@ export default function Settings() {
                       } else {
                         document.documentElement.classList.remove('compact');
                       }
-                      localStorage.setItem('hullee-compact-mode', checked ? 'true' : 'false');
+                      localStorage.setItem('ulee-compact-mode', checked ? 'true' : 'false');
                     }}
-                    defaultChecked={localStorage.getItem('hullee-compact-mode') === 'true'}
+                    defaultChecked={localStorage.getItem('ulee-compact-mode') === 'true'}
                   />
                 </div>
               </div>

@@ -31,7 +31,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     root.classList.add(`theme-${accentColor}`);
 
     // Persist compact mode
-    const isCompact = localStorage.getItem('hullee-compact-mode') === 'true';
+    const isCompact = localStorage.getItem('ulee-compact-mode') === 'true' || localStorage.getItem('hullee-compact-mode') === 'true';
     if (isCompact) {
       root.classList.add('compact');
     } else {
