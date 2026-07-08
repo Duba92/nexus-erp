@@ -39,6 +39,8 @@ import {
 import { Plus, Search, Receipt, Trash2, ArrowDownCircle, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { firestore } from '@/src/lib/firebase';
@@ -60,32 +62,44 @@ export default function Expenses() {
     e.description?.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleDownloadCSV = () => {
+  const handleDownloadPDF = () => {
     if (!expenses || expenses.length === 0) {
       toast.error('No expenses to download.');
       return;
     }
 
-    const headers = ['Expense ID', 'Category', 'Description', 'Amount (ETB)', 'Date', 'Recorded At'];
+    const doc = new jsPDF();
+
+    // Add Title & Header Info
+    doc.setFontSize(18);
+    doc.text('ULLE POS - Expenses Report', 14, 20);
+
+    doc.setFontSize(10);
+    doc.text(`Generated on: ${format(new Date(), 'yyyy-MM-dd HH:mm')}`, 14, 28);
+    if (currentCompany?.name) {
+      doc.text(`Company: ${currentCompany.name}`, 14, 34);
+    }
+
+    const headers = [['Expense ID', 'Category', 'Description', 'Amount (ETB)', 'Date']];
     const rows = expenses.map(e => [
       e.id || '',
       e.category,
       e.description || '',
-      e.amount.toString(),
-      e.date ? format(new Date(e.date), 'yyyy-MM-dd') : '',
-      (e as any).createdAt ? format(new Date((e as any).createdAt), 'yyyy-MM-dd HH:mm') : ''
+      e.amount.toLocaleString() + ' ETB',
+      e.date ? format(new Date(e.date), 'yyyy-MM-dd') : ''
     ]);
 
-    const csvContent = [headers.join(","), ...rows.map(row => row.map(val => `"${String(val).replace(/"/g, '""')}"`).join(","))].join("\n");
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `expenses_report_${format(new Date(), 'yyyy-MM-dd')}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success('Expenses CSV downloaded successfully');
+    (doc as any).autoTable({
+      startY: 40,
+      head: headers,
+      body: rows,
+      theme: 'striped',
+      headStyles: { fillColor: [79, 70, 229] }, // Elegant indigo brand color
+      styles: { fontSize: 9 },
+    });
+
+    doc.save(`expenses_report_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+    toast.success('Expenses PDF downloaded successfully');
   };
 
   const handleAddExpense = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -166,9 +180,9 @@ export default function Expenses() {
           <p className="text-muted-foreground">Manage business expenditures and costs.</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={handleDownloadCSV}>
+          <Button variant="outline" onClick={handleDownloadPDF}>
             <Download className="mr-2 h-4 w-4" />
-            Download CSV
+            Download PDF
           </Button>
           <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
             <DialogTrigger render={<Button />}>

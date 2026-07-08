@@ -21,6 +21,9 @@ import { FileText, Download, Printer, PieChart, BarChart3, TrendingUp } from 'lu
 import { Badge } from '@/src/components/ui/badge';
 import { format } from 'date-fns';
 import { cn } from '@/src/lib/utils';
+import { toast } from 'sonner';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 import { useTranslation } from '@/src/lib/i18n';
 
@@ -90,80 +93,115 @@ export default function Reports() {
 
   const netProfit = totalIncome - totalExpenses;
 
-  const handleExportSalesCSV = () => {
+  const handleExportSalesPDF = () => {
     if (!sales || sales.length === 0) {
-      alert('No sales data to export.');
+      toast.error('No sales data to export.');
       return;
     }
-    const headers = ['Sale ID', 'Date', 'Payment Method', 'Total Amount (ETB)'];
+    const doc = new jsPDF();
+    doc.setFontSize(18);
+    doc.text('ULLE POS - Sales Report', 14, 20);
+    
+    doc.setFontSize(10);
+    doc.text(`Generated on: ${format(new Date(), 'yyyy-MM-dd HH:mm')}`, 14, 28);
+    if (currentCompany?.name) {
+      doc.text(`Company: ${currentCompany.name}`, 14, 34);
+    }
+
+    const headers = [['Sale ID', 'Date', 'Payment Method', 'Total Amount (ETB)']];
     const rows = sales.map(s => [
       s.id || '',
       s.date ? format(new Date(s.date), 'yyyy-MM-dd HH:mm') : '',
       s.paymentMethod || '',
-      s.total.toString()
+      s.total.toLocaleString() + ' ETB'
     ]);
-    const csvContent = [headers.join(","), ...rows.map(row => row.map(val => `"${String(val).replace(/"/g, '""')}"`).join(","))].join("\n");
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `sales_report_${format(new Date(), 'yyyy-MM-dd')}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+
+    (doc as any).autoTable({
+      startY: 40,
+      head: headers,
+      body: rows,
+      theme: 'striped',
+      headStyles: { fillColor: [79, 70, 229] },
+      styles: { fontSize: 9 },
+    });
+
+    doc.save(`sales_report_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+    toast.success('Sales PDF downloaded successfully');
   };
 
-  const handleExportExpensesCSV = () => {
+  const handleExportExpensesPDF = () => {
     const expensesList = transactions?.filter(t => t.type === 'EXPENSE') || [];
     if (expensesList.length === 0) {
-      alert('No expense data to export.');
+      toast.error('No expense data to export.');
       return;
     }
-    const headers = ['Expense ID', 'Category', 'Description', 'Amount (ETB)', 'Date'];
+    const doc = new jsPDF();
+    doc.setFontSize(18);
+    doc.text('ULLE POS - Expenses Report', 14, 20);
+    
+    doc.setFontSize(10);
+    doc.text(`Generated on: ${format(new Date(), 'yyyy-MM-dd HH:mm')}`, 14, 28);
+    if (currentCompany?.name) {
+      doc.text(`Company: ${currentCompany.name}`, 14, 34);
+    }
+
+    const headers = [['Expense ID', 'Category', 'Description', 'Amount (ETB)', 'Date']];
     const rows = expensesList.map(e => [
       e.id || '',
       e.category || '',
       e.description || '',
-      e.amount.toString(),
+      e.amount.toLocaleString() + ' ETB',
       e.date ? format(new Date(e.date), 'yyyy-MM-dd') : ''
     ]);
-    const csvContent = [headers.join(","), ...rows.map(row => row.map(val => `"${String(val).replace(/"/g, '""')}"`).join(","))].join("\n");
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `expenses_report_${format(new Date(), 'yyyy-MM-dd')}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+
+    (doc as any).autoTable({
+      startY: 40,
+      head: headers,
+      body: rows,
+      theme: 'striped',
+      headStyles: { fillColor: [79, 70, 229] },
+      styles: { fontSize: 9 },
+    });
+
+    doc.save(`expenses_report_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+    toast.success('Expenses PDF downloaded successfully');
   };
 
-  const handleExportSummaryTXT = () => {
-    const summary = `
-========================================
-ULLE POS FINANCIAL SUMMARY REPORT
-Generated on: ${format(new Date(), 'yyyy-MM-dd HH:mm:ss')}
-========================================
+  const handleExportSummaryPDF = () => {
+    const doc = new jsPDF();
+    doc.setFontSize(18);
+    doc.text('ULLE POS - Financial Summary Report', 14, 20);
+    
+    doc.setFontSize(10);
+    doc.text(`Generated on: ${format(new Date(), 'yyyy-MM-dd HH:mm')}`, 14, 28);
+    if (currentCompany?.name) {
+      doc.text(`Company: ${currentCompany.name}`, 14, 34);
+    }
 
-Total Income/Revenue:  ETB ${totalIncome.toFixed(2)}
-Total Cost of Sales:   ETB ${((totalIncome - (realProfit || 0))).toFixed(2)}
-Real Gross Profit:     ETB ${(realProfit || 0).toFixed(2)}
-Total Expenses:        ETB ${totalExpenses.toFixed(2)}
-----------------------------------------
-Net Profit:            ETB ${netProfit.toFixed(2)}
+    const summaryHeaders = [['Financial Metric', 'Value (ETB)']];
+    const summaryRows = [
+      ['Total Income/Revenue', totalIncome.toLocaleString() + ' ETB'],
+      ['Total Cost of Sales', ((totalIncome - (realProfit || 0))).toLocaleString() + ' ETB'],
+      ['Real Gross Profit', (realProfit || 0).toLocaleString() + ' ETB'],
+      ['Total Expenses', totalExpenses.toLocaleString() + ' ETB'],
+      ['Net Profit', netProfit.toLocaleString() + ' ETB']
+    ];
 
-----------------------------------------
-End of Report
-========================================
-`;
-    const blob = new Blob([summary], { type: 'text/plain;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `financial_summary_${format(new Date(), 'yyyy-MM-dd')}.txt`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    (doc as any).autoTable({
+      startY: 40,
+      head: summaryHeaders,
+      body: summaryRows,
+      theme: 'grid',
+      headStyles: { fillColor: [79, 70, 229] },
+      styles: { fontSize: 10, cellPadding: 5 },
+      columnStyles: {
+        0: { fontStyle: 'bold' },
+        1: { halign: 'right' }
+      }
+    });
+
+    doc.save(`financial_summary_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+    toast.success('Financial Summary PDF downloaded successfully');
   };
 
   return (
@@ -174,21 +212,21 @@ End of Report
           <p className="text-muted-foreground">{t('system_overview')}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={handleExportSummaryTXT}>
+          <Button variant="outline" onClick={handleExportSummaryPDF}>
             <Download className="mr-2 h-4 w-4" />
-            Summary (.txt)
+            Summary (PDF)
           </Button>
-          <Button variant="outline" onClick={handleExportSalesCSV}>
+          <Button variant="outline" onClick={handleExportSalesPDF}>
             <Download className="mr-2 h-4 w-4" />
-            Sales (CSV)
+            Sales (PDF)
           </Button>
-          <Button variant="outline" onClick={handleExportExpensesCSV}>
+          <Button variant="outline" onClick={handleExportExpensesPDF}>
             <Download className="mr-2 h-4 w-4" />
-            Expenses (CSV)
+            Expenses (PDF)
           </Button>
           <Button variant="outline" onClick={() => window.print()}>
             <Printer className="mr-2 h-4 w-4" />
-            Print / PDF
+            Print Page
           </Button>
         </div>
       </div>

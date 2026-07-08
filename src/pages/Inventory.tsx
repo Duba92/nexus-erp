@@ -40,6 +40,8 @@ import {
 import { Plus, Search, Package, Pencil, Trash2, AlertTriangle, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 import { Badge } from '@/src/components/ui/badge';
 import { doc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { firestore } from '@/src/lib/firebase';
@@ -70,33 +72,45 @@ export default function Inventory() {
     p.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleDownloadCSV = () => {
+  const handleDownloadPDF = () => {
     if (!products || products.length === 0) {
       toast.error('No inventory products to download.');
       return;
     }
 
-    const headers = ['Product ID', 'Name', 'Quantity', 'Unit', 'Cost Price (ETB)', 'Low Stock Alert Level', 'Created At'];
+    const doc = new jsPDF();
+    
+    // Add Title & Header Info
+    doc.setFontSize(18);
+    doc.text('ULLE POS - Inventory Report', 14, 20);
+    
+    doc.setFontSize(10);
+    doc.text(`Generated on: ${format(new Date(), 'yyyy-MM-dd HH:mm')}`, 14, 28);
+    if (currentCompany?.name) {
+      doc.text(`Company: ${currentCompany.name}`, 14, 34);
+    }
+    
+    const headers = [['Product ID', 'Name', 'Quantity', 'Unit', 'Cost Price (ETB)', 'Low Stock Alert']];
     const rows = products.map(p => [
       p.id || '',
       p.name,
       p.quantity.toString(),
       p.unit || 'pcs',
-      p.costPrice.toString(),
-      p.lowStockThreshold.toString(),
-      p.createdAt ? format(new Date(p.createdAt), 'yyyy-MM-dd HH:mm') : ''
+      p.costPrice.toLocaleString() + ' ETB',
+      p.lowStockThreshold.toString()
     ]);
 
-    const csvContent = [headers.join(","), ...rows.map(e => e.map(val => `"${String(val).replace(/"/g, '""')}"`).join(","))].join("\n");
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `inventory_report_${format(new Date(), 'yyyy-MM-dd')}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success('Inventory CSV downloaded successfully');
+    (doc as any).autoTable({
+      startY: 40,
+      head: headers,
+      body: rows,
+      theme: 'striped',
+      headStyles: { fillColor: [79, 70, 229] }, // Elegant indigo brand color
+      styles: { fontSize: 9 },
+    });
+
+    doc.save(`inventory_report_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+    toast.success('Inventory PDF downloaded successfully');
   };
 
   const handleAddProduct = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -265,9 +279,9 @@ export default function Inventory() {
           <p className="text-muted-foreground">{t('stock_status')}</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={handleDownloadCSV}>
+          <Button variant="outline" onClick={handleDownloadPDF}>
             <Download className="mr-2 h-4 w-4" />
-            Download CSV
+            Download PDF
           </Button>
           <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
             <DialogTrigger render={<Button />}>
