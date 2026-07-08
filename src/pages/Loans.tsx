@@ -92,18 +92,24 @@ export default function Loans() {
 
       await db.loans.add(loanData);
 
-      // Sync to Firestore
-      try {
-        await setDoc(doc(firestore, 'loans', loanId), {
-          ...loanData,
-          dueDate: loanData.dueDate ? serverTimestamp() : null, // Simplification for now, better to handle real date
-          createdAt: serverTimestamp(),
-        });
-      } catch (syncError) {
-        console.error('Firestore sync failed', syncError);
+      const isOffline = !navigator.onLine;
+
+      if (!isOffline) {
+        // Sync to Firestore
+        try {
+          await setDoc(doc(firestore, 'loans', loanId), {
+            ...loanData,
+            dueDate: loanData.dueDate ? serverTimestamp() : null, // Simplification for now, better to handle real date
+            createdAt: serverTimestamp(),
+          });
+        } catch (syncError) {
+          console.error('Firestore sync failed', syncError);
+        }
+        toast.success('Loan recorded successfully');
+      } else {
+        toast.success('saving...');
       }
 
-      toast.success('Loan recorded successfully');
       setIsCreateOpen(false);
       setFormData({
         borrowerName: '',
@@ -128,7 +134,13 @@ export default function Loans() {
         status, 
         remainingAmount: status === 'PAID' ? 0 : loan.remainingAmount 
       });
-      toast.success('Loan status updated');
+
+      const isOffline = !navigator.onLine;
+      if (!isOffline) {
+        toast.success('Loan status updated');
+      } else {
+        toast.success('saving...');
+      }
     } catch (err) {
       toast.error('Failed to update status');
     }
@@ -138,7 +150,13 @@ export default function Loans() {
     if (!confirm('Are you sure you want to delete this record?')) return;
     try {
       await db.loans.delete(id);
-      toast.success('Loan record deleted');
+      
+      const isOffline = !navigator.onLine;
+      if (!isOffline) {
+        toast.success('Loan record deleted');
+      } else {
+        toast.success('saving...');
+      }
     } catch (err) {
       toast.error('Failed to delete record');
     }

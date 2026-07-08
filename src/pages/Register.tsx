@@ -173,7 +173,7 @@ export default function Register() {
       
       toast.success(registeredOnline 
         ? 'Registration successful! Welcome to Ulee.' 
-        : 'Registration successful locally (Offline Mode)! Welcome to Ulee.'
+        : 'saving...'
       );
       
       // Slight delay to allow toast to be seen

@@ -131,9 +131,10 @@ import { ScrollArea } from '@/src/components/ui/scroll-area';
       // 2. Create a default admin for this company
       await db.users.add(adminObj);
 
-      // 3. Sync to Firestore
-      let syncedOnline = false;
-      if (navigator.onLine) {
+      const isOffline = !navigator.onLine;
+
+      if (!isOffline) {
+        // 3. Sync to Firestore
         try {
           await setDoc(doc(firestore, 'companies', companyId.toString()), {
             ...companyObj,
@@ -148,16 +149,17 @@ import { ScrollArea } from '@/src/components/ui/scroll-area';
             firebaseUid: targetUid,
             createdAt: serverTimestamp(),
           });
-          syncedOnline = true;
         } catch (syncError) {
           console.error('Firestore sync failed', syncError);
         }
+        toast.success(
+          `Registration completed successfully!\nAdmin Phone ${normalizedAdminPhone} can now log in using the password: ${adminPassword}`,
+          { duration: 10000 }
+        );
+      } else {
+        toast.success('saving...');
       }
 
-      toast.success(
-        `Registration completed successfully!\nAdmin Phone ${normalizedAdminPhone} can now log in using the password: ${adminPassword}`,
-        { duration: 10000 }
-      );
       formElement.reset();
       setIsCreateOpen(false);
     } catch (err) {
@@ -182,7 +184,12 @@ import { ScrollArea } from '@/src/components/ui/scroll-area';
         allowedModules: selectedModules,
       });
 
-      toast.success('Company updated successfully');
+      const isOffline = !navigator.onLine;
+      if (!isOffline) {
+        toast.success('Company updated successfully');
+      } else {
+        toast.success('saving...');
+      }
       setIsEditOpen(false);
       setEditingCompany(null);
     } catch (err) {
@@ -195,8 +202,13 @@ import { ScrollArea } from '@/src/components/ui/scroll-area';
     if (confirm('Are you sure you want to delete this company? All associated data will be lost.')) {
       try {
         await db.companies.delete(id);
-        await deleteDoc(doc(firestore, 'companies', id));
-        toast.success('Company deleted successfully from local database and Cloud Firestore');
+        const isOffline = !navigator.onLine;
+        if (!isOffline) {
+          await deleteDoc(doc(firestore, 'companies', id));
+          toast.success('Company deleted successfully from local database and Cloud Firestore');
+        } else {
+          toast.success('saving...');
+        }
       } catch (error) {
         console.error('Failed to sync delete company:', error);
         toast.success('Company deleted locally');

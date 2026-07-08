@@ -106,24 +106,30 @@ export default function Inventory() {
 
       await db.products.add(productData);
 
-      // Sync to Firestore
-      try {
-        const payload = {
-          ...productData,
-          createdAt: serverTimestamp(),
-        };
-        // Sanitize object to remove any wedding undefined fields that could crash Firestore
-        Object.keys(payload).forEach(key => {
-          if ((payload as any)[key] === undefined) {
-            delete (payload as any)[key];
-          }
-        });
-        await setDoc(doc(firestore, 'products', productId), payload);
-      } catch (syncError) {
-        console.error('Firestore sync failed', syncError);
+      const isOffline = !navigator.onLine;
+
+      if (!isOffline) {
+        // Sync to Firestore
+        try {
+          const payload = {
+            ...productData,
+            createdAt: serverTimestamp(),
+          };
+          // Sanitize object to remove any wedding undefined fields that could crash Firestore
+          Object.keys(payload).forEach(key => {
+            if ((payload as any)[key] === undefined) {
+              delete (payload as any)[key];
+            }
+          });
+          await setDoc(doc(firestore, 'products', productId), payload);
+        } catch (syncError) {
+          console.error('Firestore sync failed', syncError);
+        }
+        toast.success('Inventory added successfully.');
+      } else {
+        toast.success('saving...');
       }
 
-      toast.success('Inventory added successfully.');
       setIsAddOpen(false);
     } catch (err) {
       console.error('Error adding product:', err);
@@ -166,25 +172,30 @@ export default function Inventory() {
       
       await db.products.update(editingProduct.id!, updatedProduct);
 
-      // Sync to Firestore
-      try {
-        const payload = {
-          ...editingProduct,
-          ...updatedProduct,
-          updatedAt: serverTimestamp(),
-        };
-        // Sanitize object to remove any undefined fields that could crash Firestore
-        Object.keys(payload).forEach(key => {
-          if ((payload as any)[key] === undefined) {
-            delete (payload as any)[key];
-          }
-        });
-        await setDoc(doc(firestore, 'products', editingProduct.id!), payload, { merge: true });
-      } catch (syncError) {
-        console.error('Firestore sync failed at update', syncError);
-      }
+      const isOffline = !navigator.onLine;
 
-      toast.success('Product updated successfully');
+      if (!isOffline) {
+        // Sync to Firestore
+        try {
+          const payload = {
+            ...editingProduct,
+            ...updatedProduct,
+            updatedAt: serverTimestamp(),
+          };
+          // Sanitize object to remove any undefined fields that could crash Firestore
+          Object.keys(payload).forEach(key => {
+            if ((payload as any)[key] === undefined) {
+              delete (payload as any)[key];
+            }
+          });
+          await setDoc(doc(firestore, 'products', editingProduct.id!), payload, { merge: true });
+        } catch (syncError) {
+          console.error('Firestore sync failed at update', syncError);
+        }
+        toast.success('Product updated successfully');
+      } else {
+        toast.success('saving...');
+      }
       setIsEditOpen(false);
       setEditingProduct(null);
     } catch (err) {
@@ -199,14 +210,19 @@ export default function Inventory() {
     if (confirm('Delete this product?')) {
       await db.products.delete(id);
       
-      // Sync to Firestore
-      try {
-        await deleteDoc(doc(firestore, 'products', id));
-      } catch (syncError) {
-        console.error('Firestore sync failed at delete', syncError);
-      }
+      const isOffline = !navigator.onLine;
 
-      toast.success('Product deleted');
+      if (!isOffline) {
+        // Sync to Firestore
+        try {
+          await deleteDoc(doc(firestore, 'products', id));
+        } catch (syncError) {
+          console.error('Firestore sync failed at delete', syncError);
+        }
+        toast.success('Product deleted');
+      } else {
+        toast.success('saving...');
+      }
     }
   };
 

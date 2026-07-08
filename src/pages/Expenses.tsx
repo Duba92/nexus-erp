@@ -92,17 +92,23 @@ export default function Expenses() {
 
       await db.transactions.add(txData);
 
-      // Sync to Firestore
-      try {
-        await setDoc(doc(firestore, 'transactions', txId), {
-          ...txData,
-          createdAt: serverTimestamp(),
-        });
-      } catch (syncError) {
-        console.error('Firestore sync failed', syncError);
+      const isOffline = !navigator.onLine;
+
+      if (!isOffline) {
+        // Sync to Firestore
+        try {
+          await setDoc(doc(firestore, 'transactions', txId), {
+            ...txData,
+            createdAt: serverTimestamp(),
+          });
+        } catch (syncError) {
+          console.error('Firestore sync failed', syncError);
+        }
+        toast.success('Expense added successfully.');
+      } else {
+        toast.success('saving...');
       }
 
-      toast.success('Expense added successfully.');
       setIsAddOpen(false);
     } catch (err) {
       toast.error('Failed to add expense');
@@ -114,7 +120,13 @@ export default function Expenses() {
   const handleDelete = async (id: string) => {
     if (confirm('Delete this expense record?')) {
       await db.transactions.delete(id);
-      toast.success('Record deleted');
+      
+      const isOffline = !navigator.onLine;
+      if (!isOffline) {
+        toast.success('Record deleted');
+      } else {
+        toast.success('saving...');
+      }
     }
   };
 

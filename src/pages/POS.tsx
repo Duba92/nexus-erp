@@ -195,14 +195,20 @@ export default function POS() {
         });
       });
 
-      // Commit child changes to Firestore (robust offline handling)
-      try {
-        await batch.commit();
-      } catch (firestoreError) {
-        console.warn('Firestore sync will occur later: ', firestoreError);
+      const isOffline = !navigator.onLine;
+
+      if (!isOffline) {
+        // Commit child changes to Firestore (robust offline handling)
+        try {
+          await batch.commit();
+        } catch (firestoreError) {
+          console.warn('Firestore sync will occur later: ', firestoreError);
+        }
+        toast.success('Sale added successfully.');
+      } else {
+        toast.success('saving...');
       }
 
-      toast.success('Sale added successfully.');
       setCart([]);
       setIsCheckoutOpen(false);
     } catch (err) {

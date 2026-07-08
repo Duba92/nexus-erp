@@ -90,17 +90,23 @@ export default function Employees() {
       };
       await db.departments.add(deptData);
       
-      // Sync to Firestore
-      try {
-        await setDoc(doc(firestore, 'departments', deptId), {
-          ...deptData,
-          createdAt: serverTimestamp(),
-        });
-      } catch (syncError) {
-        console.error('Firestore sync failed', syncError);
+      const isOffline = !navigator.onLine;
+
+      if (!isOffline) {
+        // Sync to Firestore
+        try {
+          await setDoc(doc(firestore, 'departments', deptId), {
+            ...deptData,
+            createdAt: serverTimestamp(),
+          });
+        } catch (syncError) {
+          console.error('Firestore sync failed', syncError);
+        }
+        toast.success('Department created');
+      } else {
+        toast.success('saving...');
       }
 
-      toast.success('Department created');
       setIsDeptOpen(false);
     } catch (err) {
       toast.error('Failed to create department');
@@ -190,25 +196,27 @@ export default function Employees() {
       // 2. Add to local Dexie
       await db.users.add(employeeData);
 
-      // 3. Sync to Firestore
-      let syncedOnline = false;
-      if (navigator.onLine) {
+      const isOffline = !navigator.onLine;
+
+      if (!isOffline) {
+        // 3. Sync to Firestore
         try {
           await setDoc(doc(firestore, 'users', employeeId), {
             ...employeeData,
             firebaseUid: employeeId,
             createdAt: serverTimestamp(),
           });
-          syncedOnline = true;
         } catch (syncError) {
           console.error('Firestore sync failed', syncError);
         }
+        toast.success(
+          `Employee registered successfully!\nPhone ${normalizedPhone} can log in using the password: ${password}`,
+          { duration: 10000 }
+        );
+      } else {
+        toast.success('saving...');
       }
 
-      toast.success(
-        `Employee registered successfully!\nPhone ${normalizedPhone} can log in using the password: ${password}`,
-        { duration: 10000 }
-      );
       formElement.reset();
       setSelectedPermissions(['pos']);
       setIsAddOpen(false);
@@ -242,25 +250,31 @@ export default function Employees() {
 
       await db.users.update(editingEmployee.id!, updatedData);
 
-      // Sync to Firestore
-      try {
-        const payload = {
-          ...editingEmployee,
-          ...updatedData,
-          updatedAt: serverTimestamp(),
-        };
-        // Sanitize object to remove any undefined fields that could crash Firestore
-        Object.keys(payload).forEach(key => {
-          if ((payload as any)[key] === undefined) {
-            delete (payload as any)[key];
-          }
-        });
-        await setDoc(doc(firestore, 'users', editingEmployee.id!), payload, { merge: true });
-      } catch (syncError) {
-        console.error('Firestore sync failed at update employee', syncError);
+      const isOffline = !navigator.onLine;
+
+      if (!isOffline) {
+        // Sync to Firestore
+        try {
+          const payload = {
+            ...editingEmployee,
+            ...updatedData,
+            updatedAt: serverTimestamp(),
+          };
+          // Sanitize object to remove any undefined fields that could crash Firestore
+          Object.keys(payload).forEach(key => {
+            if ((payload as any)[key] === undefined) {
+              delete (payload as any)[key];
+            }
+          });
+          await setDoc(doc(firestore, 'users', editingEmployee.id!), payload, { merge: true });
+        } catch (syncError) {
+          console.error('Firestore sync failed at update employee', syncError);
+        }
+        toast.success('Employee updated successfully');
+      } else {
+        toast.success('saving...');
       }
 
-      toast.success('Employee updated successfully');
       setIsEditOpen(false);
       setEditingEmployee(null);
       setSelectedPermissions(['pos']);
@@ -273,14 +287,19 @@ export default function Employees() {
     if (confirm('Deactivate this employee account?')) {
       await db.users.delete(id);
 
-      // Sync to Firestore
-      try {
-        await deleteDoc(doc(firestore, 'users', id));
-      } catch (syncError) {
-        console.error('Firestore sync failed at delete employee', syncError);
-      }
+      const isOffline = !navigator.onLine;
 
-      toast.success('Employee removed');
+      if (!isOffline) {
+        // Sync to Firestore
+        try {
+          await deleteDoc(doc(firestore, 'users', id));
+        } catch (syncError) {
+          console.error('Firestore sync failed at delete employee', syncError);
+        }
+        toast.success('Employee removed');
+      } else {
+        toast.success('saving...');
+      }
     }
   };
 
