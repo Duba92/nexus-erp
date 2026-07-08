@@ -90,8 +90,80 @@ export default function Reports() {
 
   const netProfit = totalIncome - totalExpenses;
 
-  const handleExport = (type: string) => {
-    alert(`Exporting ${type} report... (Feature available in Pro version)`);
+  const handleExportSalesCSV = () => {
+    if (!sales || sales.length === 0) {
+      alert('No sales data to export.');
+      return;
+    }
+    const headers = ['Sale ID', 'Date', 'Payment Method', 'Total Amount (ETB)'];
+    const rows = sales.map(s => [
+      s.id || '',
+      s.date ? format(new Date(s.date), 'yyyy-MM-dd HH:mm') : '',
+      s.paymentMethod || '',
+      s.total.toString()
+    ]);
+    const csvContent = [headers.join(","), ...rows.map(row => row.map(val => `"${String(val).replace(/"/g, '""')}"`).join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `sales_report_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleExportExpensesCSV = () => {
+    const expensesList = transactions?.filter(t => t.type === 'EXPENSE') || [];
+    if (expensesList.length === 0) {
+      alert('No expense data to export.');
+      return;
+    }
+    const headers = ['Expense ID', 'Category', 'Description', 'Amount (ETB)', 'Date'];
+    const rows = expensesList.map(e => [
+      e.id || '',
+      e.category || '',
+      e.description || '',
+      e.amount.toString(),
+      e.date ? format(new Date(e.date), 'yyyy-MM-dd') : ''
+    ]);
+    const csvContent = [headers.join(","), ...rows.map(row => row.map(val => `"${String(val).replace(/"/g, '""')}"`).join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `expenses_report_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleExportSummaryTXT = () => {
+    const summary = `
+========================================
+ULLE POS FINANCIAL SUMMARY REPORT
+Generated on: ${format(new Date(), 'yyyy-MM-dd HH:mm:ss')}
+========================================
+
+Total Income/Revenue:  ETB ${totalIncome.toFixed(2)}
+Total Cost of Sales:   ETB ${((totalIncome - (realProfit || 0))).toFixed(2)}
+Real Gross Profit:     ETB ${(realProfit || 0).toFixed(2)}
+Total Expenses:        ETB ${totalExpenses.toFixed(2)}
+----------------------------------------
+Net Profit:            ETB ${netProfit.toFixed(2)}
+
+----------------------------------------
+End of Report
+========================================
+`;
+    const blob = new Blob([summary], { type: 'text/plain;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `financial_summary_${format(new Date(), 'yyyy-MM-dd')}.txt`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
@@ -101,14 +173,22 @@ export default function Reports() {
           <h1 className="text-3xl font-bold tracking-tight">{t('reports_and_analytics')}</h1>
           <p className="text-muted-foreground">{t('system_overview')}</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => handleExport('PDF')}>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={handleExportSummaryTXT}>
             <Download className="mr-2 h-4 w-4" />
-            PDF
+            Summary (.txt)
           </Button>
-          <Button variant="outline" onClick={() => handleExport('Excel')}>
+          <Button variant="outline" onClick={handleExportSalesCSV}>
             <Download className="mr-2 h-4 w-4" />
-            Excel
+            Sales (CSV)
+          </Button>
+          <Button variant="outline" onClick={handleExportExpensesCSV}>
+            <Download className="mr-2 h-4 w-4" />
+            Expenses (CSV)
+          </Button>
+          <Button variant="outline" onClick={() => window.print()}>
+            <Printer className="mr-2 h-4 w-4" />
+            Print / PDF
           </Button>
         </div>
       </div>

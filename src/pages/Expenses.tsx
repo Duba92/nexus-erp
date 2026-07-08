@@ -36,7 +36,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/src/components/ui/select';
-import { Plus, Search, Receipt, Trash2, ArrowDownCircle } from 'lucide-react';
+import { Plus, Search, Receipt, Trash2, ArrowDownCircle, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
@@ -59,6 +59,34 @@ export default function Expenses() {
     e.category.toLowerCase().includes(search.toLowerCase()) || 
     e.description?.toLowerCase().includes(search.toLowerCase())
   );
+
+  const handleDownloadCSV = () => {
+    if (!expenses || expenses.length === 0) {
+      toast.error('No expenses to download.');
+      return;
+    }
+
+    const headers = ['Expense ID', 'Category', 'Description', 'Amount (ETB)', 'Date', 'Recorded At'];
+    const rows = expenses.map(e => [
+      e.id || '',
+      e.category,
+      e.description || '',
+      e.amount.toString(),
+      e.date ? format(new Date(e.date), 'yyyy-MM-dd') : '',
+      (e as any).createdAt ? format(new Date((e as any).createdAt), 'yyyy-MM-dd HH:mm') : ''
+    ]);
+
+    const csvContent = [headers.join(","), ...rows.map(row => row.map(val => `"${String(val).replace(/"/g, '""')}"`).join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `expenses_report_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success('Expenses CSV downloaded successfully');
+  };
 
   const handleAddExpense = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -137,62 +165,68 @@ export default function Expenses() {
           <h1 className="text-3xl font-bold tracking-tight">Expenses</h1>
           <p className="text-muted-foreground">Manage business expenditures and costs.</p>
         </div>
-        <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-          <DialogTrigger render={<Button />}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Expense
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
-            <form onSubmit={handleAddExpense}>
-              <DialogHeader>
-                <DialogTitle>Record Expense</DialogTitle>
-                <DialogDescription>
-                  Enter expenditure details to track your business costs.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="category">Category</Label>
-                  <Select name="category" defaultValue="General">
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Rent">Rent</SelectItem>
-                      <SelectItem value="Utilities">Utilities</SelectItem>
-                      <SelectItem value="Salary">Salary</SelectItem>
-                      <SelectItem value="Purchase">Purchase</SelectItem>
-                      <SelectItem value="Marketing">Marketing</SelectItem>
-                      <SelectItem value="General">General</SelectItem>
-                    </SelectContent>
-                  </Select>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={handleDownloadCSV}>
+            <Download className="mr-2 h-4 w-4" />
+            Download CSV
+          </Button>
+          <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+            <DialogTrigger render={<Button />}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Expense
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <form onSubmit={handleAddExpense}>
+                <DialogHeader>
+                  <DialogTitle>Record Expense</DialogTitle>
+                  <DialogDescription>
+                    Enter expenditure details to track your business costs.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="category">Category</Label>
+                    <Select name="category" defaultValue="General">
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Rent">Rent</SelectItem>
+                        <SelectItem value="Utilities">Utilities</SelectItem>
+                        <SelectItem value="Salary">Salary</SelectItem>
+                        <SelectItem value="Purchase">Purchase</SelectItem>
+                        <SelectItem value="Marketing">Marketing</SelectItem>
+                        <SelectItem value="General">General</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="amount">Amount (ETB)</Label>
+                    <Input id="amount" name="amount" type="number" step="0.01" required />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="date">Date</Label>
+                    <Input id="date" name="date" type="date" defaultValue={format(new Date(), 'yyyy-MM-dd')} required />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="description">Description (Optional)</Label>
+                    <Input id="description" name="description" placeholder="e.g., Monthly electricity bill" />
+                  </div>
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="amount">Amount (ETB)</Label>
-                  <Input id="amount" name="amount" type="number" step="0.01" required />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="date">Date</Label>
-                  <Input id="date" name="date" type="date" defaultValue={format(new Date(), 'yyyy-MM-dd')} required />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="description">Description (Optional)</Label>
-                  <Input id="description" name="description" placeholder="e.g., Monthly electricity bill" />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? (
-                    <span className="flex items-center gap-2">
-                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                      Saving...
-                    </span>
-                  ) : 'Save Expense'}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+                <DialogFooter>
+                  <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? (
+                      <span className="flex items-center gap-2">
+                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                        Saving...
+                      </span>
+                    ) : 'Save Expense'}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">

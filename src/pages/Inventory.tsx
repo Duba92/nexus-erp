@@ -37,8 +37,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/src/components/ui/select';
-import { Plus, Search, Package, Pencil, Trash2, AlertTriangle } from 'lucide-react';
+import { Plus, Search, Package, Pencil, Trash2, AlertTriangle, Download } from 'lucide-react';
 import { toast } from 'sonner';
+import { format } from 'date-fns';
 import { Badge } from '@/src/components/ui/badge';
 import { doc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { firestore } from '@/src/lib/firebase';
@@ -68,6 +69,35 @@ export default function Inventory() {
   const filteredProducts = products?.filter(p => 
     p.name.toLowerCase().includes(search.toLowerCase())
   );
+
+  const handleDownloadCSV = () => {
+    if (!products || products.length === 0) {
+      toast.error('No inventory products to download.');
+      return;
+    }
+
+    const headers = ['Product ID', 'Name', 'Quantity', 'Unit', 'Cost Price (ETB)', 'Low Stock Alert Level', 'Created At'];
+    const rows = products.map(p => [
+      p.id || '',
+      p.name,
+      p.quantity.toString(),
+      p.unit || 'pcs',
+      p.costPrice.toString(),
+      p.lowStockThreshold.toString(),
+      p.createdAt ? format(new Date(p.createdAt), 'yyyy-MM-dd HH:mm') : ''
+    ]);
+
+    const csvContent = [headers.join(","), ...rows.map(e => e.map(val => `"${String(val).replace(/"/g, '""')}"`).join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `inventory_report_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success('Inventory CSV downloaded successfully');
+  };
 
   const handleAddProduct = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -234,54 +264,60 @@ export default function Inventory() {
           <h1 className="text-3xl font-bold tracking-tight">{t('inventory')}</h1>
           <p className="text-muted-foreground">{t('stock_status')}</p>
         </div>
-        <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-          <DialogTrigger render={<Button />}>
-            <Plus className="mr-2 h-4 w-4" />
-            {t('add_product')}
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[525px]">
-            <form onSubmit={handleAddProduct}>
-              <DialogHeader>
-                <DialogTitle>{t('add_product')}</DialogTitle>
-                <DialogDescription>
-                  Enter product details to add it to your inventory.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4 sm:grid-cols-2">
-                <div className="grid gap-2 sm:col-span-2">
-                  <Label htmlFor="name">{t('name')}</Label>
-                  <Input id="name" name="name" required />
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={handleDownloadCSV}>
+            <Download className="mr-2 h-4 w-4" />
+            Download CSV
+          </Button>
+          <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+            <DialogTrigger render={<Button />}>
+              <Plus className="mr-2 h-4 w-4" />
+              {t('add_product')}
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[525px]">
+              <form onSubmit={handleAddProduct}>
+                <DialogHeader>
+                  <DialogTitle>{t('add_product')}</DialogTitle>
+                  <DialogDescription>
+                    Enter product details to add it to your inventory.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4 sm:grid-cols-2">
+                  <div className="grid gap-2 sm:col-span-2">
+                    <Label htmlFor="name">{t('name')}</Label>
+                    <Input id="name" name="name" required />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="unit">Unit (e.g., pcs, kg, box)</Label>
+                    <Input id="unit" name="unit" defaultValue="pcs" />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="quantity">Initial Quantity</Label>
+                    <Input id="quantity" name="quantity" type="number" defaultValue="0" required />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="lowStockThreshold">Low Stock Alert Level</Label>
+                    <Input id="lowStockThreshold" name="lowStockThreshold" type="number" defaultValue="5" required />
+                  </div>
+                  <div className="grid gap-2 sm:col-span-2">
+                    <Label htmlFor="costPrice">Cost Price (ETB)</Label>
+                    <Input id="costPrice" name="costPrice" type="number" step="0.01" required />
+                  </div>
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="unit">Unit (e.g., pcs, kg, box)</Label>
-                  <Input id="unit" name="unit" defaultValue="pcs" />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="quantity">Initial Quantity</Label>
-                  <Input id="quantity" name="quantity" type="number" defaultValue="0" required />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="lowStockThreshold">Low Stock Alert Level</Label>
-                  <Input id="lowStockThreshold" name="lowStockThreshold" type="number" defaultValue="5" required />
-                </div>
-                <div className="grid gap-2 sm:col-span-2">
-                  <Label htmlFor="costPrice">Cost Price (ETB)</Label>
-                  <Input id="costPrice" name="costPrice" type="number" step="0.01" required />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? (
-                    <span className="flex items-center gap-2">
-                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                      Saving...
-                    </span>
-                  ) : t('add_product')}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+                <DialogFooter>
+                  <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? (
+                      <span className="flex items-center gap-2">
+                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                        Saving...
+                      </span>
+                    ) : t('add_product')}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
